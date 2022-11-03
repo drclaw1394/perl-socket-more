@@ -4,12 +4,32 @@ use warnings;
 use Test::More;
 use Test::Deep;
 
-use Socket::More;
-use Socket ":all";
+use Socket qw<:all>;
+
 
 
 BEGIN { use_ok('Socket::More') };
 
+use Socket::More ":all";
+{
+	#Test socket wrapper
+	my $sock_addr=pack_sockaddr_in(1234, inet_pton(AF_INET, "127.0.0.1"));
+	socket my $normal,AF_INET, SOCK_STREAM, 0;
+	ok $normal, "Normal socket created";
+
+	CORE::socket my $core, AF_INET, SOCK_STREAM,0;
+	ok $core, "Core socket created";
+	socket my $wrapper, $sock_addr, SOCK_STREAM,0;
+	ok $wrapper, "Wrapper socket created";
+	
+	my $interface={family=>AF_INET,type=>SOCK_STREAM, protocol=>0};
+	socket(my $hash, $interface);
+	
+	ok getsockname($normal) eq getsockname($core), "Sockets ok";
+	ok getsockname($wrapper) eq getsockname($core), "Sockets ok";
+	ok getsockname($hash) eq getsockname($core), "Socket ok";
+	
+}
 
 {
 	#Do we get any interfaces at all?
@@ -64,6 +84,7 @@ BEGIN { use_ok('Socket::More') };
 }
 
 {
+	#say STDERR "BIND testing";
 	#Attempt to bind our listeners
 	my $unix_sock_name="test_sock";
 	if( -S $unix_sock_name){
@@ -100,6 +121,23 @@ BEGIN { use_ok('Socket::More') };
 		
 	}
 	
+}
+{
+	#say STDERR "Interger to string tests";
+	#Test the af 2 name and name 2 af 
+	#Each system is different by we assume that AF_INET and AF_INET6 are always available
+	
+	ok AF_INET==string_to_family("AF_INET"), "Name lookup ok";
+	ok AF_INET6==string_to_family("AF_INET6"), "Name lookup ok";
+
+	ok "AF_INET" eq family_to_string(AF_INET), "String convert ok";
+	ok "AF_INET6" eq family_to_string(AF_INET6), "String convert ok";
+	
+	ok SOCK_STREAM==string_to_sock("SOCK_STREAM"), "Name lookup ok";
+	ok SOCK_DGRAM==string_to_sock("SOCK_DGRAM"), "Name lookup ok";
+
+	ok "SOCK_STREAM" eq sock_to_string(SOCK_STREAM), "String convert ok";
+	ok "SOCK_DGRAM" eq sock_to_string(SOCK_DGRAM), "String convert ok";
 }
 
 	

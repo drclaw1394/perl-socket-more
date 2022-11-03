@@ -6,7 +6,8 @@ WriteMakefile(
 	NAME              => 'Socket::More',
 	VERSION_FROM      => 'lib/Socket/More.pm', # finds $VERSION, requires EU::MM from perl >= 5.5
 	PREREQ_PM         => {
-		'Data::Combination'=>0
+		'Data::Combination'=>0,
+		'Test::Deep'=>0
 	}, # e.g., Module::Name => 1.1
 	TEST_REQUIRES	=>{
 		'Test::Deep'=>0

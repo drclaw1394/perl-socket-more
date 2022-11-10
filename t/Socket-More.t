@@ -61,7 +61,6 @@ use Socket::More ":all";
 			path=>["asdf", "path2"],
 			port=>[0,10,12]
 		});
-
 	#Should give same results
 	my @results_family=Socket::More::sockaddr_passive( {
 			family=>[AF_INET, AF_INET6, AF_UNIX],

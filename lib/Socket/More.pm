@@ -56,6 +56,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	string_to_family
 	sock_to_string
 	string_to_sock
+	unpack_sockaddr
 
 ) ] );
 
@@ -121,7 +122,7 @@ sub socket {
 #Return a socket configured for the address
 
 sub unpack_sockaddr{
-	my ($package,$addr)=@_;
+	my ($addr)=@_;
 	my $family=sockaddr_family $addr;
 	if($family==AF_INET){
 		return unpack_sockaddr_in $addr;
@@ -151,11 +152,11 @@ sub make_unix_interface {
 
 use Data::Combination;
 
-my $_default_sort_order=[qw<interface family port path>];
+#my $_default_sort_order=[qw<interface family port path>];
 sub sockaddr_passive{
 	my ($spec)=@_;
 	my $r={};
-	my $sort_order=$spec->{sort}//$_default_sort_order;
+	#my $sort_order=$spec->{sort}//$_default_sort_order;
 	#If no interface provided assume all
 	$r->{interface}=$spec->{interface}//".*";
 	$r->{type}=$spec->{type}//[SOCK_STREAM, SOCK_DGRAM];
@@ -277,35 +278,41 @@ sub sockaddr_passive{
 		push @list, $out unless $found;
 	}
 
+	
 	@output=@list;
-	#Here we do multi column sorting.
-	#First, find the max width of each column
-	no warnings "uninitialized";
-	my @max_lengths;
-	for my $index (0..@$sort_order-1){
-		for(@output){
-			my $len=length $_;
-			$max_lengths[$index]=$len if $len>$max_lengths[$index];
-		}
-	}
-
-	#Combine the values into string 'keys' width a width of that fount previously
-	sort {
-		my $aa="";
-		my $bb="";
-		for my $so (0..@$sort_order-1){
-			my $field=$sort_order->[$so];
-			if($field=~/port|family/){
-				$aa.=sprintf "%-$max_lengths[$so]s", $a->{$sort_order->[$so]};
-				$bb.=sprintf "%-$max_lengths[$so]s", $b->{$sort_order->[$so]};
-			}
-			else{
-				$aa.=sprintf "%$max_lengths[$so]s", $a->{$sort_order->[$so]};
-				$bb.=sprintf "%$max_lengths[$so]s", $b->{$sort_order->[$so]};
-			}
-		}
-		$aa cmp $bb;
-	} @output
+	use Sort::Key::Multi qw<siikeysort>;
+	@output=siikeysort {$_->{interface}, $_->{family}, $_->{type}} @output;
+        ##########################################################################################
+        # #Here we do multi column sorting.                                                      #
+        # #First, find the max width of each column                                              #
+        # no warnings "uninitialized";                                                           #
+        # my @max_lengths;                                                                       #
+        # for my $index (0 .. @$sort_order-1){                                                   #
+        #         for(@output){                                                                  #
+        #                 my $len=length $_;                                                     #
+        #                 $max_lengths[$index]=$len if $len>$max_lengths[$index];                #
+        #         }                                                                              #
+        # }                                                                                      #
+        #                                                                                        #
+        #                                                                                        #
+        # #Combine the values into string 'keys' width a width of that fount previously          #
+        # sort {                                                                                 #
+        #         my $aa="";                                                                     #
+        #         my $bb="";                                                                     #
+        #         for my $so (0..@$sort_order-1){                                                #
+        #                 my $field=$sort_order->[$so];                                          #
+        #                 if($field=~/port|family/){                                             #
+        #                         $aa.=sprintf "%-$max_lengths[$so]s", $a->{$sort_order->[$so]}; #
+        #                         $bb.=sprintf "%-$max_lengths[$so]s", $b->{$sort_order->[$so]}; #
+        #                 }                                                                      #
+        #                 else{                                                                  #
+        #                         $aa.=sprintf "%$max_lengths[$so]s", $a->{$sort_order->[$so]};  #
+        #                         $bb.=sprintf "%$max_lengths[$so]s", $b->{$sort_order->[$so]};  #
+        #                 }                                                                      #
+        #         }                                                                              #
+        #         $aa cmp $bb;                                                                   #
+        # } @output                                                                              #
+        ##########################################################################################
 }
 
 sub family_to_string { $af_2_name[$_[0]]; }

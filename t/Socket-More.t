@@ -86,26 +86,35 @@ use Socket::More ":all";
 	#say STDERR "BIND testing";
 	#Attempt to bind our listeners
 	my $unix_sock_name="test_sock";
-	if( -S $unix_sock_name){
-		unlink $unix_sock_name;
-	}
+
+	my $u_name=$unix_sock_name."_S";
+	unlink $u_name if( -S $u_name);
+
+	$u_name=$unix_sock_name."_D";
+	unlink $u_name if( -S $u_name);
+
+
 	my @results=Socket::More::sockaddr_passive( {
 			path=>[$unix_sock_name],
 			port=>[0,0,0]
 	});
 
 	for(@results){
+		#say STDERR "ADDRESS/path: ".$_->{address};
+		#unlink $_->{address};
 		die "Could not make socket $!" unless socket my $socket, $_->{family}, SOCK_STREAM, 0;
 		die "Could not bind $!" unless bind $socket, $_->{addr};
 
 		my $name=getsockname($socket);
 		if($_->{family}==AF_UNIX){
 			my $path=unpack_sockaddr_un($name);
-			ok $path eq $unix_sock_name;
+			#ok $path eq $unix_sock_name;
 			close $socket;
-			if( -S $unix_sock_name){
-				unlink $unix_sock_name;
-			}
+			$u_name=$unix_sock_name."_S";
+			unlink $u_name if( -S $u_name);
+
+			$u_name=$unix_sock_name."_D";
+			unlink $u_name if( -S $u_name);
 		}
 		elsif($_->{family} ==AF_INET or  $_->{family}== AF_INET6){
 			#Check whe got a non zero port
@@ -126,19 +135,47 @@ use Socket::More ":all";
 	#Test the af 2 name and name 2 af 
 	#Each system is different by we assume that AF_INET and AF_INET6 are always available
 	
-	ok AF_INET==string_to_family("AF_INET"), "Name lookup ok";
-	ok AF_INET6==string_to_family("AF_INET6"), "Name lookup ok";
+	ok cmp_deeply([AF_INET],[string_to_family("AF_INET\$")]), "Name lookup ok";
+	ok cmp_deeply([AF_INET6],[string_to_family("AF_INET6")]), "Name lookup ok";
+	ok cmp_deeply([AF_INET, AF_INET6],[string_to_family("AF_INET")]), "Name lookup ok";
 
 	ok "AF_INET" eq family_to_string(AF_INET), "String convert ok";
 	ok "AF_INET6" eq family_to_string(AF_INET6), "String convert ok";
 	
-	ok SOCK_STREAM==string_to_sock("SOCK_STREAM"), "Name lookup ok";
-	ok SOCK_DGRAM==string_to_sock("SOCK_DGRAM"), "Name lookup ok";
+	ok cmp_deeply([SOCK_STREAM], [string_to_sock("SOCK_STREAM")]), "Name lookup ok";
+	ok cmp_deeply([SOCK_DGRAM], [string_to_sock("SOCK_DGRAM")]), "Name lookup ok";
 
 	ok "SOCK_STREAM" eq sock_to_string(SOCK_STREAM), "String convert ok";
 	ok "SOCK_DGRAM" eq sock_to_string(SOCK_DGRAM), "String convert ok";
 }
+{
+	#Command line argument string parsing
+	my @spec=parse_passive_spec("interface=eth0, family=INET\$,type=STREAM");
+	ok @spec==1, "Parsed ok";
 
-	
+	ok cmp_deeply($spec[0]{family},[AF_INET]), "Family match ok";
+	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
 
+}
+{
+	#Command line argument string parsing
+	my @spec=parse_passive_spec("192.168.0.1:8080");
+	ok @spec==1, "Parsed ok";
+
+	ok cmp_deeply($spec[0]{family},[AF_INET]), "Family match ok";
+	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
+
+	@spec=parse_passive_spec("path_goes_here");
+	ok @spec==1, "Parsed ok";
+
+	ok cmp_deeply($spec[0]{family},[AF_UNIX]), "Family match ok";
+	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
+
+	@spec=parse_passive_spec(":8084");
+	ok @spec==1, "Parsed ok";
+
+	ok cmp_deeply($spec[0]{family},[AF_INET]), "Family match ok";
+	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
+
+}
 done_testing;

@@ -6,11 +6,15 @@ use warnings;
 use Carp;
 
 use Socket ":all";
-use Test::Deep;
+
 use List::Util qw<uniq>;
 use Exporter "import";
 
 use AutoLoader;
+
+use Test::Deep;
+use Net::IP;
+use Sort::Key::Multi qw<siikeysort>;
 
 our @af_2_name;
 our %name_2_af;
@@ -56,6 +60,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	string_to_family
 	sock_to_string
 	string_to_sock
+	parse_passive_spec
 	unpack_sockaddr
 
 ) ] );
@@ -159,6 +164,13 @@ sub sockaddr_passive{
 	#my $sort_order=$spec->{sort}//$_default_sort_order;
 	#If no interface provided assume all
 	$r->{interface}=$spec->{interface}//".*";
+	
+        ##############################################
+        # if(ref($r->{interface}) ne "ARRAY"){       #
+        #         $r->{interface}=[$r->{interface}]; #
+        # }                                          #
+        ##############################################
+
 	$r->{type}=$spec->{type}//[SOCK_STREAM, SOCK_DGRAM];
 	$r->{protocol}=$spec->{protocol}//0;
 
@@ -168,8 +180,10 @@ sub sockaddr_passive{
 	#Configure port and path
 	$r->{port}=$spec->{port}//[];
 	$r->{path}=$spec->{path}//[];
+	
 
-	#Need to add an undef value to port and path arrays. Port and path are
+
+	#NOTE: Need to add an undef value to port and path arrays. Port and path are
 	#mutually exclusive
 	if(ref($r->{port}) eq "ARRAY"){
 		unshift $r->{port}->@*, undef;
@@ -178,11 +192,28 @@ sub sockaddr_passive{
 		$r->{port}=[undef, $r->{port}];#AF_INET, AF_INET6, AF_UNIX];
 	}
 
+
 	if(ref($r->{path}) eq "ARRAY"){
 		unshift $r->{path}->@*, undef;
 	}
 	else {
 		$r->{path}=[undef, $r->{path}];#AF_INET, AF_INET6, AF_UNIX];
+	}
+
+	carp "No port number specified, no address information will be returned" if ($r->{port}->@*==0) or ($r->{path}->@*==0);
+
+	#Delete from combination specification... no need to make more combos
+	my $address=delete $spec->{address};
+	my $group=delete $spec->{group};
+	$address//=".*";
+	$group//=".*";
+
+	#Ensure we have an array for later on
+	if(ref($address) ne "ARRAY"){
+		$address=[$address];
+	}
+	if(ref($group) ne "ARRAY"){
+		$group=[$group];
 	}
 
 
@@ -229,6 +260,8 @@ sub sockaddr_passive{
 
 			next;
 	CLONE:
+
+		
 			my %clone=$_->%*;			
 			my $clone=\%clone;
 			$clone{data}=$spec->{data};
@@ -240,30 +273,40 @@ sub sockaddr_passive{
 
 			#Port or path needs to be set
 			if($fam == AF_INET){
-				my (undef,$ip)=unpack_sockaddr_in($interface->{addr});
+				my (undef, $ip)=unpack_sockaddr_in($interface->{addr});
 				$clone->{addr}=pack_sockaddr_in($_->{port},$ip);
 				$clone->{address}=inet_ntop($fam, $ip);
 				#$interface->{port}=$_->{port};
 				$clone->{interface}=$interface->{name};
+				$clone->{group}=Net::IP::ip_iptypev4(Net::IP->new($clone->{address})->binip);
 			}
 			elsif($fam ==AF_INET6){
 				my(undef, $ip, $scope, $flow_info)=unpack_sockaddr_in6($interface->{addr});
 				$clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope,$flow_info);
 				$clone->{address}=inet_ntop($fam, $ip);
 				$clone->{interface}=$interface->{name};
-				#$interface->{port}=$_->{port};
+				$clone->{group}=Net::IP::ip_iptypev6(Net::IP->new($clone->{address})->binip);
 			}
 			elsif($fam==AF_UNIX){
-				my $path=unpack_sockaddr_un($interface->{addr});			
-				$clone->{address}=$_->{path};
-				$clone->{addr}=pack_sockaddr_un $_->{path};
+				my $suffix=$_->{type}==SOCK_STREAM?"_S":"_D";
+
+				$clone->{addr}=pack_sockaddr_un $_->{path}.$suffix;
+				my $path=unpack_sockaddr_un($clone->{addr});			
+				$clone->{address}=$path;
+				$clone->{path}=$path;
 				$clone->{interface}=$interface->{name};
+				$clone->{group}="UNIX";
 			}
 			else {
 				die "Unsupported family type";
 				last;
 			}
 			#$clone->{interface}=$interface->{name};
+
+			#Final filtering of address and group
+			next unless grep {$clone->{address}=~ $_ } @$address;
+			
+			next  unless grep {$clone->{group}=~ $_ } @$group;
 
 			push @output, $clone;		
 		}
@@ -280,7 +323,6 @@ sub sockaddr_passive{
 
 	
 	@output=@list;
-	use Sort::Key::Multi qw<siikeysort>;
 	@output=siikeysort {$_->{interface}, $_->{family}, $_->{type}} @output;
         ##########################################################################################
         # #Here we do multi column sorting.                                                      #
@@ -315,11 +357,93 @@ sub sockaddr_passive{
         ##########################################################################################
 }
 
+#Old style -l cli flags, limited to ipv4 interfaces thanks to the colon.
+#
+sub parse_passive_spec {
+	#splits a string by : and tests each set
+	my @output;
+	for my $input(@_){
+		my %spec;
+
+		#split fields by comma, each field is a key value pair,
+		#An exception is made for address::port
+
+		my @full=qw<interface type protocol family port path address group>;
+		my @field=split ",", $input;
+
+		#If there is only one item assume old school listen
+		if(@field==1 and $field[0]!~/=/){
+			for($field[0]){
+				if(/(.*):(.*)/){
+					#TCP and ipv4 only
+					$spec{address}=[$1];
+					$spec{port}=[$2];
+					$spec{type}=[SOCK_STREAM];
+					$spec{family}=[AF_INET];
+				}
+				else {
+					#Unix path
+					$spec{path}=[$field[0]];
+					$spec{type}=[SOCK_STREAM];
+					$spec{family}=[AF_UNIX];
+					$spec{interface}=['unix'];
+				}
+			}
+			push @output, \%spec;
+			next;
+		}
+
+		#Add information to the spec
+		for my $field (@field){
+			my ($key, $value)=split "=", $field;
+			$key=~s/ //g;
+			$value=~s/ //g;
+			my @val;
+			#Ensure only 0 or 1 keys match
+			die "Ambiguous field name: $key" if 2<=grep /^$key/i, @full;
+			($key)=grep /^$key/i, @full;
+
+			if($key eq "family"){
+				#Conver string to integer
+				@val=string_to_family($value);
+			}
+			elsif($key eq "type"){
+				#Convert string to integer
+				@val=string_to_sock($value);
+			}
+			elsif($key =~ /protocol/i){
+				#Convert string to integer
+				#TODO: service name lookup?
+			}
+			else{
+				@val=($value);
+
+			}
+			
+			defined($spec{$key})
+				?  (push $spec{$key}->@*, @val)
+				: ($spec{$key}=[@val]);
+		}
+		push @output, \%spec;
+	}
+	@output;
+}
+
+
 sub family_to_string { $af_2_name[$_[0]]; }
-sub string_to_family { $name_2_af{$_[0]}; }
+sub string_to_family { 
+	my ($string)=@_;
+	my @found=grep { /$string/} sort keys %name_2_af;
+	@name_2_af{@found}; 
+}
 
 sub sock_to_string { $sock_2_name[$_[0]]; }
-sub string_to_sock { $name_2_sock{$_[0]}; }
+
+sub string_to_sock { 
+	my ($string)=@_;
+	my @found=grep { /$string/} sort keys %name_2_sock;
+	@name_2_sock{@found};
+}
 
 1;
 __END__
@@ -462,7 +586,7 @@ Flags set on the interface
 Packed sockaddr structure suitable for use with C<bind>
 
 
-=item	metmask
+=item	netmask
 
 Packed sockaddr structure of the netmask
 
@@ -483,11 +607,11 @@ AF_INET, will return a string C<"AF_INET">
 
 =head2 string_to_family
 
-	my $family=string_to_family($string);
+	my @family=string_to_family($string);
 
-Returns a address family integer from the string label provided. Foe example,
-calling with C<"AF_INET"> will return an integer equal to C<Socket> constant
-C<AF_INET>
+Performs a match of the stirng againt all AF_.* names. Returns a list of
+integers for the corresponding address family. Returns an empty list if the
+patten/string does not match.
 
 
 =head2 sock_to_string
@@ -499,19 +623,21 @@ integer constant SOCK_STREAM, will return a string C<"SOCK_STREAM">
 
 =head2 string_to_sock
 
-	my $type=string_to_family($string);
+	my @type=string_to_family($string);
 
-Returns a socket type integer from the string label provided. Foe example,
-calling with C<"SOCK_STREAM"> will return an integer equal to constant
-C<SOCK_STREAM>
+Performs a match of the stirng againt all SOCK_.* names. Returns a list of
+integers for the corresponding address family. Returns an empty list if the
+patten/string does not match.
+
 
 
 =head2 sockaddr_passive
 
 	my @interfaces=sockadd_passive $specification;
 
-Returns a list of 'interface' structures (as per getifaddr above) which are
-configured for passive use (i.e bind) and matching the C<$specification>.
+Returns a list of 'interface' structures (similar to getifaddr above) which
+provide meta data and packed address structures suitable for passive use (i.e
+bind) and matching the C<$specification>.
 
 
 A specification can include the following keys:
@@ -551,13 +677,13 @@ families. Ignored for others
 The path used in generating a passive address. Only applied to AF_UNIX
 families. Ignored for others
 
-=item sort 
+=item address
 
-	examples: sort=>["interface", "port"]
+	exmples: 
+		address=>"192\.168\.1\.1" 
+		address=>"169\.254\."
 
-An array ref containing how the output list is to be sorted. This is 'multi
-column' sort.  Any keys from a specification can be included.
-
+As string used
 
 =item data
 
@@ -566,6 +692,36 @@ column' sort.  Any keys from a specification can be included.
 A user field which will be included in each item in the output list. 
 
 =back
+
+=head2 parse_passive_spec
+
+	my @spec=parse_passive_spec($string);
+
+Parses a consise string intended to be supplied as a command line argument. The
+string consists of one or more fields sperated by commas.
+
+The fields are in key value pairs in the form
+
+	key=value
+
+key can be any key for C<sockaddr_passive>, and C<value>is interpreted as a
+regex. 
+
+For example, the following parse a sockaddr_passive specification which would
+match SOCK_STREAM sockets, for both AF_INET and AF_INET6 families, on all
+avilable interfaces.
+
+	family=INET,type=STREAM
+
+
+In the special case of a single field, if the field DOES NOT contain a '=', it
+is interpreted as the plack comptable listen switch argument.
+
+	HOST:PORT	:PORT PATH
+
+This only will generate IPv4 matching specifications, with SOCK_STREAM type. Note also that HOST is represents a regex not a literal IP, not does it do  host look up
+
+
 
 =head1 SEE ALSO
 

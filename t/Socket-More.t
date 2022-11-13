@@ -162,8 +162,8 @@ use Socket::More ":all";
 	my @spec=parse_passive_spec("192.168.0.1:8080");
 	ok @spec==1, "Parsed ok";
 
-	ok cmp_deeply($spec[0]{family},[AF_INET]), "Family match ok";
-	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
+	ok cmp_deeply($spec[0]{family}, [AF_INET]), "Family match ok";
+	ok cmp_deeply($spec[0]{type}, [SOCK_STREAM]), "Type match ok";
 
 	@spec=parse_passive_spec("path_goes_here");
 	ok @spec==1, "Parsed ok";
@@ -171,11 +171,38 @@ use Socket::More ":all";
 	ok cmp_deeply($spec[0]{family},[AF_UNIX]), "Family match ok";
 	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
 
+
 	@spec=parse_passive_spec(":8084");
 	ok @spec==1, "Parsed ok";
+	ok !exists($spec[0]{family}), "Omitted family from spec";
 
-	ok cmp_deeply($spec[0]{family},[AF_INET]), "Family match ok";
+	@spec=parse_passive_spec(":8084,family=INET6");
+
+	ok cmp_deeply($spec[0]{family},[AF_INET6]), "Family match ok";
 	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
 
+}
+{
+	#Loopback
+	my @results=Socket::More::sockaddr_passive( {address=>"localhost", port=>0, family=>AF_INET, type=>SOCK_DGRAM});
+	ok @results==1,"localhost";
+
+	ok $results[0]{address} eq "127.0.0.1", "localhost";
+
+	@results=Socket::More::sockaddr_passive( {address=>"localhost", port=>0, family=>AF_INET6, type=>SOCK_DGRAM});
+	ok @results==1,"localhost";
+
+	ok $results[0]{address} eq "::1", "localhost";
+}
+{
+	#any/unspecified
+	#Loopback
+	my @results=Socket::More::sockaddr_passive( {address=>"0.0.0.0", port=>0, family=>AF_INET, type=>SOCK_DGRAM});
+	ok @results==1, "ipv4 wildcard";
+	ok $results[0]{address} eq "0.0.0.0", "ipv4 wildcard";
+
+	@results=Socket::More::sockaddr_passive( {address=>"::", port=>0, family=>AF_INET6, type=>SOCK_DGRAM});
+	ok @results==1, "unspecified address";
+	ok $results[0]{address} eq "::", "unspecified address";
 }
 done_testing;

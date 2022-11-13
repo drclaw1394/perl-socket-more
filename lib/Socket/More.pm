@@ -20,6 +20,8 @@ our @af_2_name;
 our %name_2_af;
 our @sock_2_name;
 our %name_2_sock;
+my $IPV4_ANY="0.0.0.0";
+my $IPV6_ANY="::";
 
 BEGIN{
 	#build a list of address family names from socket
@@ -212,21 +214,58 @@ sub sockaddr_passive{
 	if(ref($address) ne "ARRAY"){
 		$address=[$address];
 	}
+
 	if(ref($group) ne "ARRAY"){
 		$group=[$group];
 	}
 
+	my @interfaces=(make_unix_interface, Socket::More::getifaddrs);
 
+	#Check for special cases here and adjust accordingly
+	my @new_address;
+	my @new_interfaces;
+	my @new_spec_int;
+	my @new_fam;
+
+	if(grep /$IPV4_ANY/, @$address){
+		#$r->{interface}=[$IPV4_ANY];
+		push @new_spec_int, $IPV4_ANY;
+		#@$address=($IPV4_ANY);
+		push @new_address, $IPV4_ANY;
+		push @new_fam, AF_INET;
+		push @new_interfaces, ({name=>$IPV4_ANY,addr=>pack_sockaddr_in 0, inet_pton AF_INET, $IPV4_ANY});
+	}
+
+	if(grep /$IPV6_ANY/, @$address){
+		#$r->{interface}=[$IPV6_ANY];
+		push @new_spec_int, $IPV6_ANY;
+		#@$address=($IPV6_ANY);
+		push @new_address, $IPV6_ANY;
+		push @new_fam, AF_INET6;
+		push @new_interfaces, ({name=>$IPV6_ANY, addr=>pack_sockaddr_in6 0, inet_pton AF_INET6, $IPV6_ANY});
+	}
+
+	@$address=@new_address if @new_address;
+
+	@interfaces=@new_interfaces if @new_interfaces;
+	$r->{interface}=[".*"];#[@new_spec_int];
+	#$r->{family}=[@new_fam];
+
+	#Handle localhost
+	if(grep /localhost/, @$address){
+		@$address=('^127.0.0.1$','^::1$');
+		$r->{interface}=[".*"];
+	}
 	#Generate combinations
 	my $result=Data::Combination::combinations $r;
 	
 
 	#Retrieve the interfaces from the os
-	my @interfaces=(make_unix_interface, Socket::More::getifaddrs);
+	#@interfaces=(make_unix_interface, Socket::More::getifaddrs);
+
 
 	#Poor man dereferencing
 	my @results=$result->@*;
-	#say STDERR Dumper @results;
 	
 	#Force preselection of matching interfaces
 	@interfaces=grep {
@@ -239,7 +278,6 @@ sub sockaddr_passive{
 	my @output;
 	for my $interface (@interfaces){
 		my $fam= sockaddr_family($interface->{addr});
-		#say STDERR "FAMILY OF INTERFACE: $fam";
 		for(@results){
 			next if $fam != $_->{family};
 
@@ -280,14 +318,14 @@ sub sockaddr_passive{
 				$clone->{interface}=$interface->{name};
 				$clone->{group}=Net::IP::ip_iptypev4(Net::IP->new($clone->{address})->binip);
 			}
-			elsif($fam ==AF_INET6){
+			elsif($fam == AF_INET6){
 				my(undef, $ip, $scope, $flow_info)=unpack_sockaddr_in6($interface->{addr});
 				$clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope,$flow_info);
 				$clone->{address}=inet_ntop($fam, $ip);
 				$clone->{interface}=$interface->{name};
 				$clone->{group}=Net::IP::ip_iptypev6(Net::IP->new($clone->{address})->binip);
 			}
-			elsif($fam==AF_UNIX){
+			elsif($fam == AF_UNIX){
 				my $suffix=$_->{type}==SOCK_STREAM?"_S":"_D";
 
 				$clone->{addr}=pack_sockaddr_un $_->{path}.$suffix;
@@ -362,39 +400,52 @@ sub sockaddr_passive{
 sub parse_passive_spec {
 	#splits a string by : and tests each set
 	my @output;
+	my @full=qw<interface type protocol family port path address group>;
 	for my $input(@_){
 		my %spec;
 
 		#split fields by comma, each field is a key value pair,
 		#An exception is made for address::port
 
-		my @full=qw<interface type protocol family port path address group>;
 		my @field=split ",", $input;
-
-		#If there is only one item assume old school listen
-		if(@field==1 and $field[0]!~/=/){
-			for($field[0]){
-				if(/(.*):(.*)/){
-					#TCP and ipv4 only
-					$spec{address}=[$1];
-					$spec{port}=[$2];
-					$spec{type}=[SOCK_STREAM];
-					$spec{family}=[AF_INET];
-				}
-				else {
-					#Unix path
-					$spec{path}=[$field[0]];
-					$spec{type}=[SOCK_STREAM];
-					$spec{family}=[AF_UNIX];
-					$spec{interface}=['unix'];
-				}
-			}
-			push @output, \%spec;
-			next;
-		}
 
 		#Add information to the spec
 		for my $field (@field){
+			if($field!~/=/){
+				for($field){
+					if(/(.*):(.*)/){
+						#TCP and ipv4 only
+						$spec{address}=[$1];
+						$spec{port}=[$2];
+
+						if($spec{address}[0] =~ /localhost/){
+							#do not set family
+							#$spec{address}=['^127.0.0.1$','^::1$'];
+						}
+						elsif($spec{address}[0] eq ""){
+							$spec{address}=[$IPV6_ANY, $IPV4_ANY];
+
+							#$spec{family}=[AF_INET, AF_INET6];
+						}
+						else{
+							#assume an ipv4 address
+							$spec{family}=[AF_INET];
+						}
+
+						$spec{type}=[SOCK_STREAM];
+
+					}
+					else {
+						#Unix path
+						$spec{path}=[$field];
+						$spec{type}=[SOCK_STREAM];
+						$spec{family}=[AF_UNIX];
+						$spec{interface}=['unix'];
+					}
+				}
+				#goto PUSH;
+				next;
+			}
 			my ($key, $value)=split "=", $field;
 			$key=~s/ //g;
 			$value=~s/ //g;
@@ -404,14 +455,14 @@ sub parse_passive_spec {
 			($key)=grep /^$key/i, @full;
 
 			if($key eq "family"){
-				#Conver string to integer
+				#Convert string to integer
 				@val=string_to_family($value);
 			}
 			elsif($key eq "type"){
 				#Convert string to integer
 				@val=string_to_sock($value);
 			}
-			elsif($key =~ /protocol/i){
+			elsif($key eq "protocol"){
 				#Convert string to integer
 				#TODO: service name lookup?
 			}
@@ -420,10 +471,14 @@ sub parse_passive_spec {
 
 			}
 			
-			defined($spec{$key})
-				?  (push $spec{$key}->@*, @val)
-				: ($spec{$key}=[@val]);
+                        ###########################################
+                        # defined($spec{$key})                    #
+                        #         ?  (push $spec{$key}->@*, @val) #
+                        #         : ($spec{$key}=[@val]);         #
+                        ###########################################
+			($spec{$key}=[@val]);
 		}
+		PUSH:
 		push @output, \%spec;
 	}
 	@output;
@@ -431,17 +486,19 @@ sub parse_passive_spec {
 
 
 sub family_to_string { $af_2_name[$_[0]]; }
+
 sub string_to_family { 
 	my ($string)=@_;
-	my @found=grep { /$string/} sort keys %name_2_af;
+	my @found=grep { /$string/i} sort keys %name_2_af;
 	@name_2_af{@found}; 
 }
 
 sub sock_to_string { $sock_2_name[$_[0]]; }
 
+
 sub string_to_sock { 
 	my ($string)=@_;
-	my @found=grep { /$string/} sort keys %name_2_sock;
+	my @found=grep { /$string/i} sort keys %name_2_sock;
 	@name_2_sock{@found};
 }
 

@@ -159,13 +159,13 @@ use Socket::More ":all";
 }
 {
 	#Command line argument string parsing
-	my @spec=parse_passive_spec("192.168.0.1:8080");
+	my @spec=parse_passive_spec("192.168.0.1:8080,type=stream");
 	ok @spec==1, "Parsed ok";
 
 	ok cmp_deeply($spec[0]{family}, [AF_INET]), "Family match ok";
 	ok cmp_deeply($spec[0]{type}, [SOCK_STREAM]), "Type match ok";
 
-	@spec=parse_passive_spec("path_goes_here");
+	@spec=parse_passive_spec("path_goes_here,type=STREAM");
 	ok @spec==1, "Parsed ok";
 
 	ok cmp_deeply($spec[0]{family},[AF_UNIX]), "Family match ok";
@@ -176,7 +176,7 @@ use Socket::More ":all";
 	ok @spec==1, "Parsed ok";
 	ok !exists($spec[0]{family}), "Omitted family from spec";
 
-	@spec=parse_passive_spec(":8084,family=INET6");
+	@spec=parse_passive_spec(":8084,family=INET6,type=stream");
 
 	ok cmp_deeply($spec[0]{family},[AF_INET6]), "Family match ok";
 	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";

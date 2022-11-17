@@ -67,6 +67,8 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	string_to_sock
 	parse_passive_spec
 	unpack_sockaddr
+	if_nametoindex
+	if_indextoname
 
 ) ] );
 

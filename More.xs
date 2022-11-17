@@ -8,6 +8,7 @@
 #include "const-c.inc"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <net/if.h>
 #include <ifaddrs.h>
 #include <sys/un.h>
 
@@ -123,4 +124,84 @@ getifaddrs()
 		}
 		
 
+SV *
+if_nametoindex(name)
+	SV *name;
+	INIT:
+		char *p;
+		unsigned int ret;
+		int len;
+	PPCODE:
 
+		if(SvOK(name)&&SvPOK(name)){
+			len=SvCUR(name);
+			p=SvGROW(name, len+1);	
+			p[len]='\0';
+
+			ret=if_nametoindex(p);	
+			mXPUSHs(newSVuv(ret));
+			XSRETURN(1);
+		}
+		else {
+			XSRETURN_UNDEF;
+		}
+
+
+SV *
+if_indextoname(index)
+
+	SV *index;
+
+	INIT:
+
+		//linux uses IF_NAMESIZE
+		SV *result=newSV(IFNAMSIZ);
+		char *p=SvPVX(result);
+		char *ret;
+	
+	PPCODE:
+		if(SvOK(index)){
+			ret=if_indextoname(SvUV(index), p);
+			if(ret == p){
+				
+				SvPOK_on(result);
+				SvCUR_set(result, strlen(p));
+				mXPUSHs(result);
+				XSRETURN(1);
+			}
+			else {
+				XSRETURN_UNDEF;
+			}
+		}
+		else {
+			XSRETURN_UNDEF;
+		}
+
+void
+if_nameindex()
+
+	INIT:
+
+		UV count=0;
+		struct if_nameindex *results, *next;
+	PPCODE:
+
+		results=if_nameindex();
+		
+		if(results ==NULL){
+
+			XSRETURN_UNDEF;
+		}
+		else {
+			next=results;
+			while((next->if_index !=0 )&&
+			(next->if_name != NULL)){
+				EXTEND(SP,2);
+				mPUSHs(newSVuv(next->if_index));
+				mPUSHs(newSVpv(next->if_name, 0));
+				count++;
+				next=results+count;
+			}
+			if_freenameindex(results);
+			XSRETURN(count);
+		}

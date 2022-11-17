@@ -74,10 +74,11 @@ I wanted an easy way to listen on a particular interface ONLY.  The normal way
 of wild card addresses "0.0.0.0" or the unspecified IPv6 address, will listen
 on all interfaces. Any restrictions on connecting sockets will either need to
 be implemented in the firewall or in application code accepting and then
-closing the connection, which is a waste of resources.
+closing the connection. This is a waste of resources and a potential security
+problem.
 
 Manually creating the multitude of potential addresses on the same interface
-(especially for IPv6) is a pain to maintain.
+(especially for IPv6) is a pain to maintain. This module reduces the effort.
 
 
 
@@ -145,6 +146,28 @@ Packed sockaddr structure of the dstmask
 
 =back
 
+=head2 if_nametoindex
+
+	my $index=if_nametoindex($name);
+
+Returns the index of an interface by name
+
+=head2 if_indextoname
+
+	my $name=if_indextoname($index);
+
+Returns the name of an interface by index.
+
+=head2 if_nameindex
+
+	my @pairs=if_nameindex;
+
+Returns a list of key value pairs. The key is the interface index, and the
+value is the name of the interface.
+
+Return undef on e
+
+
 =head2 family_to_string
 
 	my $string=family_to_string($family);
@@ -202,7 +225,18 @@ address generation and not as a filter. Other keys like C<interface> and
 C<family> for example are used to restrict the number of addresses created.
 
 Finally keys like C<address> are a final filter which are directly matched
-against the address 
+against the address.
+
+Keys themselves can be the shortest unique starting substring:
+
+	{
+		i=>...		#interface
+		f=>...		#family
+		po=>...		#port
+		pa=>...		#path
+		a=>...		#address
+		t=>...		#type
+	}
 
 
 It can include the following keys:

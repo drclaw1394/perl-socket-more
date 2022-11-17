@@ -5,6 +5,7 @@ use Test::More;
 use Test::Deep;
 
 use Socket qw<:all>;
+use feature "say";
 
 
 
@@ -205,4 +206,19 @@ use Socket::More ":all";
 	ok @results==1, "unspecified address";
 	ok $results[0]{address} eq "::", "unspecified address";
 }
+
+{
+	#IF name and index mapping
+	my @name=map {$_->{name}} getifaddrs;
+	my @index= map { Socket::More::if_nametoindex($_) } @name;
+	my @tname= map { Socket::More::if_indextoname($_)} @index;
+	for (0..$#index){
+		ok $name[$_] eq $tname[$_], "Name->index->name match";
+	}
+	my @nameindex=Socket::More::if_nameindex;
+
+	ok @nameindex, "nameindex count ok";
+
+}
+
 done_testing;

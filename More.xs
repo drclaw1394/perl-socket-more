@@ -154,8 +154,7 @@ if_indextoname(index)
 
 	INIT:
 
-		//linux uses IF_NAMESIZE
-		SV *result=newSV(IFNAMSIZ);
+		SV *result=newSV(IF_NAMESIZE);
 		char *p=SvPVX(result);
 		char *ret;
 	

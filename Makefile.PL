@@ -1,4 +1,3 @@
-use 5.036000;
 use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
@@ -8,8 +7,10 @@ WriteMakefile(
 	PREREQ_PM         => {
 		'Data::Combination'=>0,
 		'Test::Deep'=>0,
-		'Sort::Key'=>0
+		'Sort::Key'=>0,
+		'Net::IP'=>0
 	}, # e.g., Module::Name => 1.1
+	MIN_PERL_VERSION=>"v5.36.0",
 	TEST_REQUIRES	=>{
 		'Test::Deep'=>0
 	},

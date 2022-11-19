@@ -69,6 +69,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	unpack_sockaddr
 	if_nametoindex
 	if_indextoname
+	if_nameindex
 
 ) ] );
 
@@ -208,6 +209,8 @@ sub sockaddr_passive{
 	#Delete from combination specification... no need to make more combos
 	my $address=delete $spec->{address};
 	my $group=delete $spec->{group};
+	my $data=delete $spec->{data};
+
 	$address//=".*";
 	$group//=".*";
 
@@ -346,10 +349,12 @@ sub sockaddr_passive{
 			#$clone->{interface}=$interface->{name};
 
 			#Final filtering of address and group
-			next unless grep {$clone->{address}=~ $_ } @$address;
+			next unless grep {$clone->{address}=~ /$_/i } @$address;
 			
-			next  unless grep {$clone->{group}=~ $_ } @$group;
+			next  unless grep {$clone->{group}=~ /$_/i } @$group;
 
+			#copy data to clone
+			$clone->{data}=$data;
 			push @output, $clone;		
 		}
 	}
@@ -373,7 +378,7 @@ sub sockaddr_passive{
 sub parse_passive_spec {
 	#splits a string by : and tests each set
 	my @output;
-	my @full=qw<interface type protocol family port path address group>;
+	my @full=qw<interface type protocol family port path address group data>;
 	for my $input(@_){
 		my %spec;
 
@@ -425,7 +430,7 @@ sub parse_passive_spec {
 				#goto PUSH;
 				next;
 			}
-			my ($key, $value)=split "=", $field;
+			my ($key, $value)=split "=", $field,2;
 			$key=~s/ //g;
 			$value=~s/ //g;
 			my @val;
@@ -441,10 +446,18 @@ sub parse_passive_spec {
 				#Convert string to integer
 				@val=string_to_sock($value);
 			}
-			elsif($key eq "protocol"){
-				#Convert string to integer
-				#TODO: service name lookup?
-			}
+                        ###############################
+                        # elsif($key eq "data"){      #
+                        #         $spec{$key}=$value; #
+                        #         next;               #
+                        # }                           #
+                        ###############################
+                        #######################################
+                        # elsif($key eq "protocol"){          #
+                        #         #Convert string to integer  #
+                        #         #TODO: service name lookup? #
+                        # }                                   #
+                        #######################################
 			else{
 				@val=($value);
 

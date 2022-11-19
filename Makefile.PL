@@ -20,8 +20,19 @@ WriteMakefile(
 	LIBS              => [''], # e.g., '-lm'
 	DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
 	INC               => '-I.', # e.g., '-I. -I/usr/include/other'
-	# Un-comment this if you add C files to link with later:
-	# OBJECT            => '$(O_FILES)', # link all the C files too
+	META_ADD => {
+		"meta-spec" => {
+			version => 2
+		},
+		resources=> {
+			repository =>{
+				type => "git",
+				url => "git://github.com/drclaw1394/perl-socket-more.git",
+				web => "http://github.com/drclaw1394/perl-socket-more",
+			}
+		}
+	}
+	
 );
 if  (eval {require ExtUtils::Constant; 1}) {
 	# If you edit these definitions to change the constants used by this module,

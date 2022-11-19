@@ -44,10 +44,10 @@ family, port  and paths are discarded:
 
 Instead of listening to all interfaces with a wildcard addresses, this module
 makes it easy to generate the data structures to bind sockets on multiple
-addresses, socket types, and families on a particular set of interfaces, by
+addresses, socket types, and families on a particular set of interfaces by
 name.
 
-In short it implements `sockaddr_passive`, which facilitates solutions to
+It implements `sockaddr_passive`, which facilitates solutions to
 requirements like these:
 
 ```
@@ -55,7 +55,7 @@ requirements like these:
     and 9091, but limit to link local addresses, and stream types'.
 
     'listen on eth0 and unix, port 1000 and path test.sock, using datagram
-    type sockets'.
+    type sockets,'.
 ```
 
 In order to achieve this, several 'inet.h' and similar routines are also
@@ -82,37 +82,7 @@ Manually creating the multitude of potential addresses on the same interface
 generating all combinations of parameters and then filters out what doesn't
 make sense and what you don't want
 
-# POTENTIAL FUTURE WORK
-
-- reduce memory overhead
-- network interface queries for byte counts, rates.. etc
-- expand address family types support(i.e link)
-- network change events/notifications
-
 # API
-
-## socket
-
-```perl
-    socket $socket, $domain_or_addr, $type, $proto
-
-
-    example:
-            die "$!" unless socket my $socket, AF_INET, SOCK_STREAM,0;
-
-            
-            die "$!" unless socket my $socket, $sockaddr, SOCK_STREAM,0;
-```
-
-A wrapper around `CORE::socket`.  It checks if the `DOMAIN` is a number.  If
-so, it simply calls `CORE::socket` with the supplied arguments.
-
-Otherwise it assumes `DOMAIN` is a packed sockaddr structure and extracts the
-domain/family field using `sockaddr_family`. This value is then used as the
-`DOMAIN` value in a call to `CORE::socket`.
-
-Return values are as per `CORE::socket`. Please refer to ["perldoc -f socket"](#perldoc-f-socket)
-for more.
 
 ## getifaddrs
 
@@ -256,8 +226,10 @@ restrict addresses created to the match
 Keys like `address` and `group` are a filter which are directly matched
 against the address and group.
 
-Keys themselves can be the shortened down to the shortest unique substring
-which aids in usage from the command line:
+Keys themselves can be shortened all the way down to the shortest unique
+substring. So instead of 'interface', it could be 'inter', 'int' or just 'i'
+for example. This aids in usage from the command line. The shortest unique keys
+are:
 
 ```perl
     {
@@ -303,7 +275,10 @@ It can include the following keys:
     ```
 
     The ports used in generating a passive address. Only applied to AF\_INET\*
-    families. Ignored for others
+    families. Ignored for others.
+
+    Either `port` or `path` are required, otherwise no addresses will be
+    generated.
 
 - path
 
@@ -313,7 +288,14 @@ It can include the following keys:
     ```
 
     The path used in generating a passive address. Only applied to AF\_UNIX
-    families. Ignored for others
+    families. Ignored for others.
+
+    Either `port` or `path` are required, otherwise no addresses will be
+    generated.
+
+    **NOTE** The actually path resulting from the specification will have a '\_D' or
+    '\_S' appended to the path. This is done to ensure sockets of different type
+    don't attempt to use the same path.
 
 - address
 
@@ -339,11 +321,14 @@ It can include the following keys:
 
     ```perl
         examples: 
-        data=>$scalar 
-        data=>{ ca=>$ca_path, pkey=>$p_path}
+        data=>[$scalar]
+        data=>[{ ca=>$ca_path, pkey=>$p_path}]
     ```
 
-    A user field which will be included in each item in the output list.
+    A user field which will be included in each item in the output list. 
+
+    **NOTE** It is recommended this value is an array ref, wrapping actual data. This
+    makes it more consistent when the data key is parsed from the command line
 
 ## parse\_passive\_spec
 
@@ -360,8 +345,36 @@ The fields are in key value pairs in the form
     key=value
 ```
 
-key can be any key used in a specification for `sockaddr_passive`, and
-`value`is interpreted as a regex. 
+`key` can be any key used in a specification for `sockaddr_passive`, and
+`value` is interpreted as a path, number or a string (regex), depending on the
+key.
+
+`port` and `path` keys take literal values.
+
+`family` and `type` keys take regex values, which match against the
+family/type names (using `string_to_sock` and `string_to_family`) and are
+replaced with the integer values internally.
+
+Other keys treat the value as a string/regex to match against.
+
+The keys can be used repeatedly within multiple fields. For example that means
+the following  will match interfaces eth0, eth1 and lo.
+
+```perl
+    in=>eth0,port=1000,in='lo|eth1'
+```
+
+Only the first "=" within a field is split. this allows the data field itself
+to take more key value pairs:
+
+```
+    eg:
+    data=key1=value,data=key2=another
+    data=ca=ca_path.pem,data=key=private.pem
+```
+
+**NOTE** Because repeat `data` keys can be used, the specification generated from
+`parse_passive_spec` will contain a `data` key with an array as its value.
 
 For example, the following parse a `sockaddr_passive` specification which would
 match SOCK\_STREAM sockets, for both AF\_INET and AF\_INET6 families, on all
@@ -372,27 +385,62 @@ available interfaces.
     f=INET,t=STREAM         #Shortest unique string for keys
 ```
 
-In the special case of a single field (i.e. with out a '='), is interpreted as
-the plack compatible listen switch argument.
+The special case of a field not in key value format (i.e. with out a '='), is
+interpreted as the plack compatible listen switch argument.
 
 ```
     HOST:PORT               #INET/INET6 address and port
     :PORT                   #wildcard address and port
     PATH                    #UNIX socket path
+    
 ```
 
-Note: to specify an IPv6 literal on the command line, it is contained in a pair
+The `HOST` portion is assinged to the `address` field. The `PORT` portion is
+assigned to the `port` field. If a `PORT` is specified without a `HOST`,
+then the `address` field is set to `["0.0.0.0", "::"]` which disables
+interface matching, but will listen on all INET addresses.
+
+**NOTE** This behaviour may change in later versions, as  "::" supports both INET
+and INET6.
+
+**NOTE** to specify an IPv6 literal on the command line, it is contained in a pair
 of \[\] and will need to be escaped or quoted in the shell
+
+## socket
+
+```perl
+    socket $socket, $domain_or_addr, $type, $proto
+
+
+    example:
+            die "$!" unless socket my $socket, AF_INET, SOCK_STREAM,0;
+
+            
+            die "$!" unless socket my $socket, $sockaddr, SOCK_STREAM,0;
+```
+
+A wrapper around `CORE::socket`.  It checks if the `DOMAIN` is a number.  If
+so, it simply calls `CORE::socket` with the supplied arguments.
+
+Otherwise it assumes `DOMAIN` is a packed sockaddr structure and extracts the
+domain/family field using `sockaddr_family`. This value is then used as the
+`DOMAIN` value in a call to `CORE::socket`.
+
+Return values are as per `CORE::socket`. Please refer to ["perldoc -f socket"](#perldoc-f-socket)
+for more.
 
 # EXAMPLES
 
 Please checkout 'cli.pl' in the examples directory of this distribution. It
-demonstrates the following:
+demonstrates many of the features of this module by using the
+`sockaddr_passive`, `parse_passive_spec`, `family_to_string` and
+`sock_to_string` functions. It requires `Text::Table` in addition to this
+module.
 
-- input one or more specifications for sockaddr\_passive from command line
-- parsing specifications
-- generating/matching passive address structures
-- using constant to string functions to generate a nice human readable table
+It takes user input from the command line using one or more `-l` parameters
+via [Getopt::Long](https://metacpan.org/pod/Getopt%3A%3ALong). These are parsed into passive specifications, which are
+then executed to generate list of passive structures matching the
+specification. The results are converted into nice text table output.
 
 The following shows the example outputs running this program with different
 inputs.
@@ -478,6 +526,29 @@ for inet and path test.sock for unix, datagram type only
     unix      test.sock_D   AF_UNIX UNIX          test.sock_D SOCK_DGRAM
 ```
 
+## RUN7
+
+Interface en0 and lo, port 1010, private or link local group, multiple data keys
+
+```
+    examples/cli.pl -l in=en0,in=lo,po=1010,gr='PRI|link',data=ca=test,data=key=path
+
+    Interface Address                   Family   Group              Port Path Type        Data            
+    en0       192.168.1.103             AF_INET  PRIVATE            1010      SOCK_STREAM ca=test,key=path
+    en0       192.168.1.103             AF_INET  PRIVATE            1010      SOCK_DGRAM  ca=test,key=path
+    en0       fe80::1086:a38e:8f5d:38e2 AF_INET6 LINK-LOCAL-UNICAST 1010      SOCK_STREAM ca=test,key=path
+    en0       fe80::1086:a38e:8f5d:38e2 AF_INET6 LINK-LOCAL-UNICAST 1010      SOCK_DGRAM  ca=test,key=path
+    lo0       fe80::1                   AF_INET6 LINK-LOCAL-UNICAST 1010      SOCK_STREAM ca=test,key=path
+    lo0       fe80::1                   AF_INET6 LINK-LOCAL-UNICAST 1010      SOCK_DGRAM  ca=test,key=path
+```
+
+# TODO
+
+- reduce memory overhead 
+- network interface queries for byte counts, rates.. etc
+- expand address family types support(i.e link)
+- network change events/notifications
+
 # SEE ALSO
 
 Other modules provide network interface queries:
@@ -487,6 +558,10 @@ Other modules provide network interface queries:
 # AUTHOR
 
 Ruben Westerberg, &lt;drclaw@mac.com&lt;gt>
+
+# REPOSITORTY and BUGS
+
+Please report any bugs via git hub: [http://github.com/drclaw1394/perl-socket-more](http://github.com/drclaw1394/perl-socket-more)
 
 # COPYRIGHT AND LICENSE
 

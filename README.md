@@ -429,6 +429,22 @@ domain/family field using `sockaddr_family`. This value is then used as the
 Return values are as per `CORE::socket`. Please refer to ["perldoc -f socket"](#perldoc-f-socket)
 for more.
 
+## has\_IPv4\_interface
+
+```
+    has_IPv4_interface;
+```
+
+Returns true if at least one IPv4 interface was found. False otherwise.
+
+## has\_IPv6\_interface
+
+```
+    has_IPv6_interface;
+```
+
+Returns true if at least one IPv6 interface was found. False otherwise.
+
 # EXAMPLES
 
 Please checkout 'cli.pl' in the examples directory of this distribution. It

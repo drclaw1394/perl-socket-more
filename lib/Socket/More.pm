@@ -70,6 +70,8 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	if_nametoindex
 	if_indextoname
 	if_nameindex
+	has_IPv4_interface
+	has_IPv6_interface
 
 ) ] );
 
@@ -491,6 +493,30 @@ sub string_to_sock {
 	my ($string)=@_;
 	my @found=grep { /$string/i} sort keys %name_2_sock;
 	@name_2_sock{@found};
+}
+
+sub has_IPv4_interface {
+	my $spec={
+		family=>AF_INET,
+		type=>SOCK_STREAM,
+		port=>0
+	};
+	my @results=sockaddr_passive $spec;
+	
+	@results>=1;
+
+}
+
+sub has_IPv6_interface{
+	my $spec={
+		family=>AF_INET6,
+		type=>SOCK_STREAM,
+		port=>0
+	};
+	my @results=sockaddr_passive $spec;
+	
+	@results>=1;
+
 }
 
 1;

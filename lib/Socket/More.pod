@@ -401,7 +401,17 @@ C<DOMAIN> value in a call to C<CORE::socket>.
 Return values are as per C<CORE::socket>. Please refer to L<perldoc -f socket>
 for more.
 
+=head2 has_IPv4_interface
 
+	has_IPv4_interface;
+
+Returns true if at least one IPv4 interface was found. False otherwise.
+
+=head2 has_IPv6_interface
+
+	has_IPv6_interface;
+
+Returns true if at least one IPv6 interface was found. False otherwise.
 
 =head1 EXAMPLES
 

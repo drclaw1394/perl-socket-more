@@ -14,7 +14,7 @@ WriteMakefile(
 	TEST_REQUIRES	=>{
 		'Test::Deep'=>0
 	},
-	ABSTRACT_FROM     => 'lib/Socket/More.pm', # retrieve abstract from module
+	ABSTRACT_FROM     => 'lib/Socket/More.pod', # retrieve abstract from module
 	AUTHOR            => 'Ruben Westerberg <drclaw@mac.com>',
 	LICENSE           => 'mit',
 	LIBS              => [''], # e.g., '-lm'

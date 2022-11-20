@@ -10,8 +10,8 @@ use feature "say";
 
 
 BEGIN { use_ok('Socket::More') };
-
 use Socket::More ":all";
+
 {
 	#Test socket wrapper
 	my $sock_addr=pack_sockaddr_in(1234, inet_pton(AF_INET, "127.0.0.1"));
@@ -190,10 +190,15 @@ use Socket::More ":all";
 
 	ok $results[0]{address} eq "127.0.0.1", "localhost";
 
-	@results=Socket::More::sockaddr_passive( {address=>"localhost", port=>0, family=>AF_INET6, type=>SOCK_DGRAM});
-	ok @results==1,"localhost";
 
-	ok $results[0]{address} eq "::1", "localhost";
+	IPV6_LOCALHOST: {
+		skip "No IPv6 Interfaces", 2 unless (has_IPv6_interface);
+		#Only test this if we know the system has at least one ipv6 address.
+		@results=Socket::More::sockaddr_passive( {address=>"localhost", port=>0, family=>AF_INET6, type=>SOCK_DGRAM});
+		ok @results==1,"localhost";
+
+		ok $results[0]{address} eq "::1", "localhost";
+	}
 }
 {
 	#any/unspecified
@@ -207,18 +212,20 @@ use Socket::More ":all";
 	ok $results[0]{address} eq "::", "unspecified address";
 }
 
-{
-	#IF name and index mapping
-	my @name=map {$_->{name}} getifaddrs;
-	my @index= map { Socket::More::if_nametoindex($_) } @name;
-	my @tname= map { Socket::More::if_indextoname($_)} @index;
-	for (0..$#index){
-		ok $name[$_] eq $tname[$_], "Name->index->name match";
-	}
-	my @nameindex=Socket::More::if_nameindex;
-
-	ok @nameindex, "nameindex count ok";
-
-}
+##########################################################################
+# {                                                                      #
+#         #IF name and index mapping                                     #
+#         my @name=map {$_->{name}} getifaddrs;                          #
+#         my @index= map { Socket::More::if_nametoindex($_) } @name;     #
+#         my @tname= map { Socket::More::if_indextoname($_)} @index;     #
+#         for (0..$#index){                                              #
+#                 ok $name[$_] eq $tname[$_], "Name->index->name match"; #
+#         }                                                              #
+#         my @nameindex=Socket::More::if_nameindex;                      #
+#                                                                        #
+#         ok @nameindex, "nameindex count ok";                           #
+#                                                                        #
+# }                                                                      #
+##########################################################################
 
 done_testing;

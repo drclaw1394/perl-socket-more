@@ -6,9 +6,9 @@ WriteMakefile(
 	VERSION_FROM      => 'lib/Socket/More.pm', # finds $VERSION, requires EU::MM from perl >= 5.5
 	PREREQ_PM         => {
 		'Data::Combination'=>0,
-		'Test::Deep'=>0,
+		'Data::Cmp'=>0,
 		'Sort::Key'=>0,
-		'Net::IP'=>0
+		'Net::IP::Lite'=>0
 	}, # e.g., Module::Name => 1.1
 	MIN_PERL_VERSION=>"v5.36.0",
 	TEST_REQUIRES	=>{

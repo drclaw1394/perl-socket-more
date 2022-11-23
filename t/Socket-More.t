@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::Deep;
+use Data::Cmp qw<cmp_data>;
 
 use Socket qw<:all>;
 use feature "say";
@@ -78,8 +78,10 @@ use Socket::More ":all";
 			port=>[0,10,12]
 		});
 
-	ok cmp_deeply(\@results, \@results_family),"Family ok";
-	ok cmp_deeply(\@results, \@results_family_interface),"Family  and interface ok";
+	#ok cmp_deeply(\@results, \@results_family),"Family ok";
+	ok cmp_data(\@results, \@results_family)==0,"Family ok";
+	#ok cmp_deeply(\@results, \@results_family_interface),"Family  and interface ok";
+	ok cmp_data(\@results, \@results_family_interface)==0,"Family  and interface ok";
 
 }
 
@@ -136,15 +138,15 @@ use Socket::More ":all";
 	#Test the af 2 name and name 2 af 
 	#Each system is different by we assume that AF_INET and AF_INET6 are always available
 	
-	ok cmp_deeply([AF_INET],[string_to_family("AF_INET\$")]), "Name lookup ok";
-	ok cmp_deeply([AF_INET6],[string_to_family("AF_INET6")]), "Name lookup ok";
-	ok cmp_deeply([AF_INET, AF_INET6],[string_to_family("AF_INET")]), "Name lookup ok";
+	ok cmp_data([AF_INET],[string_to_family("AF_INET\$")])==0, "Name lookup ok";
+	ok cmp_data([AF_INET6],[string_to_family("AF_INET6")])==0, "Name lookup ok";
+	ok cmp_data([AF_INET, AF_INET6],[string_to_family("AF_INET")])==0, "Name lookup ok";
 
 	ok "AF_INET" eq family_to_string(AF_INET), "String convert ok";
 	ok "AF_INET6" eq family_to_string(AF_INET6), "String convert ok";
 	
-	ok cmp_deeply([SOCK_STREAM], [string_to_sock("SOCK_STREAM")]), "Name lookup ok";
-	ok cmp_deeply([SOCK_DGRAM], [string_to_sock("SOCK_DGRAM")]), "Name lookup ok";
+	ok cmp_data([SOCK_STREAM], [string_to_sock("SOCK_STREAM")])==0, "Name lookup ok";
+	ok cmp_data([SOCK_DGRAM], [string_to_sock("SOCK_DGRAM")])==0, "Name lookup ok";
 
 	ok "SOCK_STREAM" eq sock_to_string(SOCK_STREAM), "String convert ok";
 	ok "SOCK_DGRAM" eq sock_to_string(SOCK_DGRAM), "String convert ok";
@@ -154,8 +156,8 @@ use Socket::More ":all";
 	my @spec=parse_passive_spec("interface=eth0, family=INET\$,type=STREAM");
 	ok @spec==1, "Parsed ok";
 
-	ok cmp_deeply($spec[0]{family},[AF_INET]), "Family match ok";
-	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
+	ok cmp_data($spec[0]{family},[AF_INET])==0, "Family match ok";
+	ok cmp_data($spec[0]{type},[SOCK_STREAM])==0, "Type match ok";
 
 }
 {
@@ -163,14 +165,14 @@ use Socket::More ":all";
 	my @spec=parse_passive_spec("192.168.0.1:8080,type=stream");
 	ok @spec==1, "Parsed ok";
 
-	ok cmp_deeply($spec[0]{family}, [AF_INET]), "Family match ok";
-	ok cmp_deeply($spec[0]{type}, [SOCK_STREAM]), "Type match ok";
+	ok cmp_data($spec[0]{family}, [AF_INET])==0, "Family match ok";
+	ok cmp_data($spec[0]{type}, [SOCK_STREAM])==0, "Type match ok";
 
 	@spec=parse_passive_spec("path_goes_here,type=STREAM");
 	ok @spec==1, "Parsed ok";
 
-	ok cmp_deeply($spec[0]{family},[AF_UNIX]), "Family match ok";
-	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
+	ok cmp_data($spec[0]{family},[AF_UNIX])==0, "Family match ok";
+	ok cmp_data($spec[0]{type},[SOCK_STREAM])==0, "Type match ok";
 
 
 	@spec=parse_passive_spec(":8084");
@@ -179,8 +181,8 @@ use Socket::More ":all";
 
 	@spec=parse_passive_spec(":8084,family=INET6,type=stream");
 
-	ok cmp_deeply($spec[0]{family},[AF_INET6]), "Family match ok";
-	ok cmp_deeply($spec[0]{type},[SOCK_STREAM]), "Type match ok";
+	ok cmp_data($spec[0]{family},[AF_INET6])==0, "Family match ok";
+	ok cmp_data($spec[0]{type},[SOCK_STREAM])==0, "Type match ok";
 
 }
 {

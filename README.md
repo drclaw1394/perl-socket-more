@@ -56,6 +56,9 @@ requirements like these:
 
     'listen on eth0 and unix, port 1000 and path test.sock, using datagram
     type sockets,'.
+
+    'listen on all interfaces on port 8080 and 8081, but only on link local
+    ipv6 address'
 ```
 
 In order to achieve this, several 'inet.h' and similar routines are also
@@ -202,7 +205,12 @@ abbreviated names can be matched.
 
 Returns a list of 'interface' structures (similar to getifaddr above) which
 provide meta data and packed address structures suitable for passive use (i.e
-bind) and matching the `$specification`.
+bind) and matching the `$specification`. The resulting data is sorted by
+interface name, then but family and finally by type.
+
+It has some overlapping function of `getaddrinfo`, however it is specifically
+for creating addresses for binding, allows the use of interface names and
+operates with UNIX domain configurations through a synthetic  'unix' interface.
 
 A specification hash has optional keys which dictate what addresses are
 generated and filtered:

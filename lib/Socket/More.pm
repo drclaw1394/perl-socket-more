@@ -132,18 +132,10 @@ sub ip_iptypev6 {
 #######
 #END COPY FROM Net::IP
 
-
-
-
-
-
-
-
-
-our @af_2_name;
-our %name_2_af;
-our @sock_2_name;
-our %name_2_sock;
+my @af_2_name;
+my %name_2_af;
+my @sock_2_name;
+my %name_2_sock;
 my $IPV4_ANY="0.0.0.0";
 my $IPV6_ANY="::";
 
@@ -164,6 +156,15 @@ BEGIN{
 
 
 	@names=grep /^SOCK_/, keys %Socket::;
+
+	#filter out the following bit masks on BSD, to prevent a huge array:
+	#define	SOCK_CLOEXEC	0x10000000
+	#define	SOCK_NONBLOCK	0x20000000
+	
+	for my $ignore(qw<SOCK_CLOEXEC SOCK_NONBLOCK>){
+		@names=grep $_ ne $ignore, @names;
+	}
+	say STDERR @names;
 	for my $name (@names){
 		my $val;
 		eval {

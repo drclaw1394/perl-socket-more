@@ -12,7 +12,7 @@ WriteMakefile(
 	}, # e.g., Module::Name => 1.1
 	MIN_PERL_VERSION=>"v5.36.0",
 	TEST_REQUIRES	=>{
-		'Test::Deep'=>0
+		'Data::Cmp'=>0
 	},
 	ABSTRACT_FROM     => 'lib/Socket/More.pod', # retrieve abstract from module
 	AUTHOR            => 'Ruben Westerberg <drclaw@mac.com>',

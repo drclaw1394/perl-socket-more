@@ -164,7 +164,6 @@ BEGIN{
 	for my $ignore(qw<SOCK_CLOEXEC SOCK_NONBLOCK>){
 		@names=grep $_ ne $ignore, @names;
 	}
-	say STDERR @names;
 	for my $name (@names){
 		my $val;
 		eval {
@@ -459,8 +458,6 @@ sub sockaddr_passive{
 				#$clone->{group}=Net::IP::XS::ip_iptypev6(Net::IP::XS->new($clone->{address})->binip);
 				
 				$clone->{group}=ip_iptypev6 ip2bin($clone->{address});
-				#say STDERR $clone->{address};
-				#say STDERR $clone->{group};
 
 				#$clone->{group}=Net::IP->new($clone->{address})->iptype;
 			}

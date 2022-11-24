@@ -11,6 +11,13 @@ Bring into your namespace. This overrides `socket` also:
     use Socket::More ":all";
 ```
 
+Or import any of the functions by name:
+
+```perl
+    use v5.36;
+    use Socket::More qw<getifaddrs sockaddr_passive ...>;
+```
+
 Simple list of all interfaces:
 
 ```perl
@@ -20,7 +27,7 @@ Simple list of all interfaces:
 ```
 
 Flexible way to create interface scoped passive (listen) address across
-families. Special 'unix' interface for easy of use. All invalid combinations of
+families. Special 'unix' interface for ease of use. All invalid combinations of
 family, port  and paths are discarded:
 
 ```perl
@@ -42,13 +49,10 @@ family, port  and paths are discarded:
 
 # DESCRIPTION
 
-Instead of listening to all interfaces with a wildcard addresses, this module
-makes it easy to generate the data structures to bind sockets on multiple
-addresses, socket types, and families on a particular set of interfaces by
-name.
-
-It implements `sockaddr_passive`, which facilitates solutions to
-requirements like these:
+This module makes it easier to generate the data structures to bind sockets on
+multiple addresses, socket types, and families (including unix) on a particular
+set of interfaces by name. It implements `sockaddr_passive`, which facilitates
+solutions to requirements like these:
 
 ```
     'listen on interfaces eth0 and eth1, using IPv6 and port numbers 9090
@@ -62,15 +66,16 @@ requirements like these:
 ```
 
 In order to achieve this, several 'inet.h' and similar routines are also
-implemented such as `getifaddrs`, `if_nametoindex`, `if_indextoname`,
+implemented. This includes `getifaddrs`, `if_nametoindex`, `if_indextoname`,
 `if_nameindex`.
 
-To help support using this module in an application, string to constant
-mapping, constant to string mapping and command line parsing routines are also
-implemented.  Please see the [API](https://metacpan.org/pod/API) section for  a complete listing.
+To help support using this module in an application, address family and socket
+type support functions for  string to constant mapping, constant to string
+mapping and command line parsing routines are also implemented.  Please see the
+[API](https://metacpan.org/pod/API) section for  a complete listing.
 
 No symbols are exported by default. All symbols can be exported with the ":all"
-tag or individually by name
+tag or individually by name.
 
 # MOTIVATION
 
@@ -568,10 +573,9 @@ Interface en0 and lo, port 1010, private or link local group, multiple data keys
 
 # TODO
 
-- reduce memory overhead 
-- network interface queries for byte counts, rates.. etc
-- expand address family types support(i.e link)
-- network change events/notifications
+- Network interface queries for byte counts, rates.. etc
+- Expand address family types support(i.e link)
+- Network change events/notifications
 
 # SEE ALSO
 

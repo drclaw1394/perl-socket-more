@@ -223,7 +223,7 @@ use Socket::More ":all";
   for my $r (@results){
     ok ((defined($r->{port}) and $r->{port}!=0), "port reified");
     if(defined($prev)){
-        ok ($prev==$r->{port}), "Ports are the same";     
+        ok $prev==$r->{port}, "Ports are the same";     
         $prev=$r->{port};
     }
 
@@ -245,7 +245,7 @@ use Socket::More ":all";
     if(defined($prev)){
 
         #NOTE: This is likely to work.. but no guarentee that port numbers will be different accross interfaces
-        ok ($prev!=$r->{port}), "Port different";     
+        ok $prev!=$r->{port}, "Ports different";     
         $prev=$r->{port};
     }
 

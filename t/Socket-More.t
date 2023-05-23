@@ -78,10 +78,18 @@ use Socket::More ":all";
 			port=>[0,10,12]
 		});
 
+	#Should give same results. Not the partial name for family types
+	my @results_family_string=Socket::More::sockaddr_passive( {
+			family=>[qw(AF_INET INET6 UNIX)],
+			path=>["asdf", "path2"],
+			port=>[0,10,12]
+		});
+
 	#ok cmp_deeply(\@results, \@results_family),"Family ok";
 	ok cmp_data(\@results, \@results_family)==0,"Family ok";
 	#ok cmp_deeply(\@results, \@results_family_interface),"Family  and interface ok";
 	ok cmp_data(\@results, \@results_family_interface)==0,"Family  and interface ok";
+	ok cmp_data(\@results, \@results_family_string)==0,"Family ok";
 
 }
 
@@ -155,7 +163,6 @@ use Socket::More ":all";
 	#Command line argument string parsing
 	my @spec=parse_passive_spec("interface=eth0, family=INET\$,type=STREAM");
 	ok @spec==1, "Parsed ok";
-
 	ok cmp_data($spec[0]{family},[AF_INET])==0, "Family match ok";
 	ok cmp_data($spec[0]{type},[SOCK_STREAM])==0, "Type match ok";
 

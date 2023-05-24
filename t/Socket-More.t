@@ -200,7 +200,7 @@ use Socket::More ":all";
 	ok $results[0]{address} eq "127.0.0.1", "localhost";
 
 
-	IPV6_LOCALHOST: {
+  SKIP:{
 		skip "No IPv6 Interfaces", 2 unless (has_IPv6_interface);
 		#Only test this if we know the system has at least one ipv6 address.
 		@results=Socket::More::sockaddr_passive( {address=>"localhost", port=>0, family=>AF_INET6, type=>SOCK_DGRAM});

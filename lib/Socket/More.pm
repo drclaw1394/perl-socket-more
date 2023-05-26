@@ -205,7 +205,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '0.4.0';
+our $VERSION = 'v0.4.2';
 
 sub getifaddrs;
 sub string_to_family;

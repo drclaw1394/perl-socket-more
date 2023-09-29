@@ -2,7 +2,26 @@ package Socket::More;
 
 use 5.036000;
 
-use Socket ":all";
+use Socket qw<
+
+inet_pton
+inet_ntop
+
+getnameinfo
+
+
+unpack_sockaddr_in
+unpack_sockaddr_in6
+unpack_sockaddr_un
+pack_sockaddr_un
+pack_sockaddr_in
+pack_sockaddr_in6
+
+
+>;
+#sockaddr_family 
+# ":all";
+use Socket::More::Constants;
 
 #use AutoLoader;
 
@@ -185,43 +204,24 @@ use Export::These qw<
 	has_IPv6_interface
   reify_ports
   reify_ports_unshared
+
+  sockaddr_family
+  getaddrinfo
+  gai_strerror 
 >;
 
 sub _reexport {
   # Rexport symbols from socket
   my $target=shift;
-  Socket->import(":all") if @_;
+  #Socket->import(":all") if @_;
+  Socket::More::Constaants->import;
 }
 
-our $VERSION = 'v0.4.3';
+our $VERSION = 'v0.4.4';
 
 sub getifaddrs;
 sub string_to_family;
 sub string_to_sock;
-##############################################################################
-# sub AUTOLOAD {                                                             #
-#     # This AUTOLOAD is used to 'autoload' constants from the constant()    #
-#     # XS function.                                                         #
-#                                                                            #
-#     my $constname;                                                         #
-#     our $AUTOLOAD;                                                         #
-#     ($constname = $AUTOLOAD) =~ s/.*:://;                                  #
-#     die "&Socket::More::constant not defined" if $constname eq 'constant'; #
-#     my ($error, $val) = constant($constname);                              #
-#     if ($error) { die $error; }                                            #
-#     {                                                                      #
-#         no strict 'refs';                                                  #
-#         # Fixed between 5.005_53 and 5.005_61                              #
-# #XXX    if ($] >= 5.00561) {                                               #
-# #XXX        *$AUTOLOAD = sub () { $val };                                  #
-# #XXX    }                                                                  #
-# #XXX    else {                                                             #
-#             *$AUTOLOAD = sub { $val };                                     #
-# #XXX    }                                                                  #
-#     }                                                                      #
-#     goto &$AUTOLOAD;                                                       #
-# }                                                                          #
-##############################################################################
 
 require XSLoader;
 XSLoader::load('Socket::More', $VERSION);
@@ -231,6 +231,15 @@ XSLoader::load('Socket::More', $VERSION);
 #Basic wrapper around CORE::socket.
 #If it looks like an number: Use core perl
 #Otherwise, extract socket family from assumed sockaddr and then call core
+
+
+sub sockaddr_family {
+  # first byte is unsigned char length of struct, which is unused....?
+  # The second byte is the family type
+  unpack "C", substr($_[0],1,1);
+}
+
+
 
 sub socket {
 
@@ -248,6 +257,8 @@ sub socket {
 		return CORE::socket $_[0], $domain, $_[2], $_[3];
 	}
 }
+
+
 
 #Network interface stuff
 #=======================
@@ -388,8 +399,8 @@ sub sockaddr_passive{
 		push @new_spec_int, $IPV6_ANY;
 		#@$address=($IPV6_ANY);
 		push @new_address, $IPV6_ANY;
-		push @new_fam, AF_INET6;
-		push @new_interfaces, ({name=>$IPV6_ANY, addr=>pack_sockaddr_in6 0, inet_pton AF_INET6, $IPV6_ANY});
+    push @new_fam, AF_INET6;
+    push @new_interfaces, ({name=>$IPV6_ANY, addr=>pack_sockaddr_in6 0, inet_pton AF_INET6, $IPV6_ANY});
 	}
 
 	if(@new_address){

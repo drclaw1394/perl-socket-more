@@ -204,3 +204,127 @@ if_nameindex()
 			if_freenameindex(results);
 			XSRETURN(count);
 		}
+
+void
+getaddrinfo(hostname, servicename, hints, results)
+
+    SV *hostname;
+    SV *servicename;
+    SV *hints;
+    AV *results;
+
+  PROTOTYPE: $$$\@
+
+  INIT:
+    int ret;
+    struct addrinfo *res;
+    char *hname=NULL;
+    char *sname=NULL;
+    struct addrinfo h;
+    struct addrinfo *next;
+    int len;
+    
+
+  PPCODE: 
+
+    h.ai_flags=0;
+    h.ai_family=0;
+    h.ai_socktype=0;
+    h.ai_protocol=0;
+    h.ai_addrlen=0;
+    h.ai_addr=NULL;
+    h.ai_canonname=NULL;
+    h.ai_next=NULL;
+
+    // First check that output array is doable
+    
+    //expectiong a hostname 
+
+    if(SvOK(hostname) && SvPOK(hostname)){
+      len=SvCUR(hostname);
+      hname=SvGROW(hostname,1);
+      hname[len]='\0';
+    }
+    if(SvOK(servicename) && SvPOK(servicename)){
+      len=SvCUR(servicename);
+      sname=SvGROW(servicename,1);
+      sname[len]='\0';
+    }
+
+    if(SvOK(hints) && SvROK(hints)){
+      SV** temp;
+      HV* hv=(HV *)SvRV(hints);
+
+      temp=hv_fetch(hv,"flags",5,1);
+      if((temp != NULL ) &&SvIOK(*temp)){
+        fprintf(stderr, "IN FLAGS %ld\n", SvIV(*temp));
+
+        h.ai_flags = SvIV(*temp);
+      }
+      temp=hv_fetch(hv,"family",6,1);
+      if((temp != NULL ) &&SvIOK(*temp)){
+        h.ai_family = SvIV(*temp);
+      }
+      temp=hv_fetch(hv,"socktype",8,1);
+      if((temp != NULL ) &&SvIOK(*temp)){
+        h.ai_socktype = SvIV(*temp);
+      }
+      temp=hv_fetch(hv,"protocol",8,1);
+      if((temp != NULL ) &&SvIOK(*temp)){
+        h.ai_protocol = SvIV(*temp);
+      }
+    }
+
+    //XSRETURN_UNDEF;
+
+    fprintf(stderr, "hostname is %s\n", hname);
+    ret=getaddrinfo(hname,sname,&h,&res);
+
+
+
+    if(ret<0){
+      // The return array to error?
+      XSRETURN_UNDEF;
+    }
+    else{
+      // Copy results into output array
+      HV *h;
+      int count=0;
+      next=res;
+      while(next){
+        count++;
+        next=next->ai_next;
+      }
+      av_extend(results,count);
+      //Resize output array to  fit count 
+      int i=0;
+      next=res;
+      while(next){
+        h=newHV();
+        hv_store(h, "family", 6, newSViv(next->ai_family), 0);
+        hv_store(h, "socktype", 8, newSViv(next->ai_socktype), 0);
+        hv_store(h, "protocol", 8, newSViv(next->ai_protocol), 0);
+        hv_store(h, "addr", 4, newSVpv((char *)(next->ai_addr), next->ai_addrlen), 0);
+        hv_store(h, "canonname", 9, newSVpv(next->ai_canonname,0), 0);
+
+        //Push results to return stack
+        next=next->ai_next;
+        av_store(results,i,newRV((SV *)h));
+        i++;
+        //mXPUSHs(newRV((SV *)h));
+        //count++;
+
+      }
+      freeaddrinfo(res);
+
+
+
+
+
+      XSRETURN_IV(ret);
+    }
+
+const char *
+gai_strerror(code)
+  int code;
+

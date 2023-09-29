@@ -4,7 +4,8 @@ use warnings;
 use Test::More;
 use Data::Cmp qw<cmp_data>;
 
-use Socket qw<:all>;
+use Socket;# qw<:all>;
+use Socket::More::Constants;
 use feature "say";
 
 
@@ -12,14 +13,38 @@ use feature "say";
 BEGIN { use_ok('Socket::More') };
   use Socket::More;
 
+  use Data::Dumper;
+{
+  # getaddrinfo
+
+  my $res=Socket::More::getaddrinfo("www.google.com", "80", undef, my @results);
+  say STDERR Dumper \$res;
+  ok $res==0, "Return ok";
+  ok @results>0, "Results ok";
+  for(@results){
+    say STDERR "val: $_";
+    for my ($k, $v)($_->%*){
+      say STDERR "$k=>$v";
+    }
+  }
+say STDERR "CONSTANTS: ", Socket::More::EAI_ADDRFAMILY;
+say STDERR "CONSTANTS: ", Socket::More::EAI_AGAIN;
+}
 {
 	#Test socket wrapper
-	my $sock_addr=pack_sockaddr_in(1234, inet_pton(AF_INET, "127.0.0.1"));
+  say STDERR "NUMERIC HOST IS ". NI_NUMERICHOST;
+  my $res=getaddrinfo("127.0.0.1", "1234",{flags=>NI_NUMERICHOST,family=>AF_INET},my @results);
+  
+  say STDERR gai_strerror $res;
+  say STDERR Dumper $results[0];
+  #my $sock_addr=pack_sockaddr_in(1234, Socket::inet_pton(AF_INET, "127.0.0.1"));
+	my $sock_addr=$results[0]{addr};#pack_sockaddr_in(1234, $results[0]{addr});
 	socket my $normal,AF_INET, SOCK_STREAM, 0;
 	ok $normal, "Normal socket created";
 
 	CORE::socket my $core, AF_INET, SOCK_STREAM,0;
 	ok $core, "Core socket created";
+
 	socket my $wrapper, $sock_addr, SOCK_STREAM,0;
 	ok $wrapper, "Wrapper socket created";
 	
@@ -280,5 +305,6 @@ BEGIN { use_ok('Socket::More') };
 #                                                                        #
 # }                                                                      #
 ##########################################################################
+
 
 done_testing;

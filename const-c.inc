@@ -21,7 +21,7 @@ typedef double NV; /* 5.6 and later define NVTYPE, and typedef NV to it.  */
 #endif
 
 static int
-constant (pTHX_ const char *name, STRLEN len) {
+constant (pTHX_ const char *name, STRLEN len, IV *iv_return) {
   /* Initially switch on the length of the name.  */
   /* When generated this function returned values for the list of names given
      in this section of perl code.  Rather than manually editing these functions
@@ -36,8 +36,8 @@ constant (pTHX_ const char *name, STRLEN len) {
 #!/Users/drclaw/perl5/perlbrew/perls/perl-5.36.0/bin/perl -w
 use ExtUtils::Constant qw (constant_types C_constant XS_constant);
 
-my $types = {map {($_, 1)} qw()};
-my @names = (qw());
+my $types = {map {($_, 1)} qw(IV)};
+my @names = (qw(EAI_ADDRFAMILY));
 
 print constant_types(), "\n"; # macro defs
 foreach (C_constant ("Socket::More", 'constant', 'IV', $types, undef, 3, @names) ) {
@@ -49,6 +49,16 @@ __END__
    */
 
   switch (len) {
+  case 14:
+    if (memEQ(name, "EAI_ADDRFAMILY", 14)) {
+#ifdef EAI_ADDRFAMILY
+      *iv_return = EAI_ADDRFAMILY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
   }
   return PERL_constant_NOTFOUND;
 }

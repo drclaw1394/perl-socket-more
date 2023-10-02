@@ -45,9 +45,9 @@ BEGIN { use_ok('Socket::More') };
   ok $res, "Return ok";
   ok @results>0, "Results ok";
   for(@results){
-    for my ($k, $v)($_->%*){
+    #for my ($k, $v)($_->%*){
       #say STDERR "$k=>$v";
-    }
+      #}
   }
 }
 
@@ -56,6 +56,7 @@ BEGIN { use_ok('Socket::More') };
       my $name=pack_sockaddr_in(1234, pack "C4", 127,0,0,1);
       my $err=getnameinfo($name, my $ip="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
 }
+
 {
 	#Test socket wrapper
   my $res=Socket::More::getaddrinfo("127.0.0.1", "1234",{flags=>NI_NUMERICHOST,family=>AF_INET},my @results);

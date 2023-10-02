@@ -8,7 +8,6 @@ use 5.036000;
 #unpack_sockaddr_un
 # ":all";
 use Socket::More::Constants;
-use Socket::More::IPRanges;
 
 #use AutoLoader;
 
@@ -102,10 +101,10 @@ use Export::These qw<
 sub _reexport {
   # Rexport symbols from socket
   #my $target=shift;
-  Socket::More::Constaants->import;
+  Socket::More::Constants->import;
 }
 
-our $VERSION = 'v0.4.4';
+our $VERSION = 'v0.5.0';
 
 #sub pack_sockaddr_un;
 
@@ -114,8 +113,8 @@ XSLoader::load('Socket::More', $VERSION);
 sub getifaddrs;
 sub string_to_family;
 sub string_to_sock;
-sub getaddrinfo;
-sub getnameinfo;
+#sub getaddrinfo :PROTO($$$\@);
+#sub getnameinfo :PROTO($$$$);
 
 #Socket stuff
 
@@ -298,6 +297,9 @@ sub sockaddr_passive{
 	die "No port number specified, no address information will be returned" if ($r->{port}->@*==0) or ($r->{path}->@*==0);
 
 	#Delete from combination specification... no need to make more combos
+  #
+  my $enable_group=exists $spec->{group};
+
 	my $address=delete $spec->{address};
 	my $group=delete $spec->{group};
 	my $data=delete $spec->{data};
@@ -438,7 +440,10 @@ sub sockaddr_passive{
 
 				#$interface->{port}=$_->{port};
 				$clone->{interface}=$interface->{name};
-        $clone->{group}=ipv4_group $clone->{address};#ip_iptypev4 ip2bin($clone->{address});
+        if($enable_group){
+          require Socket::More::IPRanges;
+          $clone->{group}=Socket::More::IPRanges::ipv4_group($clone->{address});
+        }
 			}
 			elsif($fam == AF_INET6){
 				my(undef, $ip, $scope, $flow_info)=unpack_sockaddr_in6($interface->{addr});
@@ -447,7 +452,10 @@ sub sockaddr_passive{
 
 				$clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope, $flow_info);
 				$clone->{interface}=$interface->{name};
-        $clone->{group}=ipv6_group $clone->{address};#ip_iptypev6 ip2bin($clone->{address});
+        if($enable_group){
+          require Socket::More::IPRanges;
+          $clone->{group}=Socket::More::IPRanges::ipv6_group($clone->{address});
+      }
 			}
 			elsif($fam == AF_UNIX){
 				my $suffix=$_->{type}==SOCK_STREAM?"_S":"_D";
@@ -457,7 +465,7 @@ sub sockaddr_passive{
 				$clone->{address}=$path;
 				$clone->{path}=$path;
 				$clone->{interface}=$interface->{name};
-				$clone->{group}="UNIX";
+				$clone->{group}="UNIX" if $enable_group;
 			}
 			else {
 				die "Unsupported family type";
@@ -468,7 +476,9 @@ sub sockaddr_passive{
 			#Final filtering of address and group
 			next unless grep {$clone->{address}=~ /$_/i } @$address;
 			
-			next  unless grep {$clone->{group}=~ /$_/i } @$group;
+      if($enable_group){
+        next  unless grep {$clone->{group}=~ /$_/i } @$group;
+      }
 
 			#copy data to clone
 			$clone->{data}=$data;
@@ -584,6 +594,11 @@ sub parse_passive_spec {
 		push @output, \%spec;
 	}
 	@output;
+}
+
+# Build address structures to connect to remote/passive/listening peers
+sub sockaddr_active{
+
 }
 
 

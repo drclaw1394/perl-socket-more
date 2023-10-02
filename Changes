@@ -2,8 +2,22 @@ Revision history for Perl extension Socket::More.
 v0.5.0  2023-09-30
   [features]
     - Removed runtime dependancie on Socket
+    - Networking related constants contained in Socket::More::Constants
+    - IP grouping/ranges refactored into seperate module
+      -TODO load at when required or implement own group code
+
     - Implemented getaddrinfo and getnameinfo
-    - Implemented sockaddr_active to complement sockaddr_passive 
+    - Implemented pack/unpack_sockaddr_un/in/in6 and sockaddr_family
+    - Implemented gai_strerror
+        
+    - TODO update pod with new functions
+      - calling convention is different to socket
+
+    [imporvements]
+      - reduced memory overhead but not requiring Socket
+      - reduce memeory overhead by only processing ip ranges/groups when asked
+        for in sockaddr_passive specificaiton
+
 
 v0.4.3 2023-09-05
   [changes]

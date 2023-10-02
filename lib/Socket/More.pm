@@ -2,144 +2,21 @@ package Socket::More;
 
 use 5.036000;
 
-use Socket qw<
-
-inet_pton
-inet_ntop
-
-getnameinfo
-
-
-unpack_sockaddr_in
-unpack_sockaddr_in6
-unpack_sockaddr_un
-pack_sockaddr_un
-pack_sockaddr_in
-pack_sockaddr_in6
-
-
->;
+#pack_sockaddr_in
+#unpack_sockaddr_in
 #sockaddr_family 
+#unpack_sockaddr_un
 # ":all";
 use Socket::More::Constants;
+use Socket::More::IPRanges;
 
 #use AutoLoader;
 
-use Net::IP::Lite qw<ip2bin>;
+#use Net::IP::Lite qw<ip2bin>;
 use Data::Cmp qw<cmp_data>;
 use Data::Combination;
 
 
-##DIRECT COPY FROM Net::IP
-##########################
-my $ERROR;
-my $ERRNO;
-# Definition of the Ranges for IPv4 IPs
-my %IPv4ranges = (
-    '00000000'                         => 'PRIVATE',     # 0/8
-    '00001010'                         => 'PRIVATE',     # 10/8
-    '0110010001'                       => 'SHARED',      # 100.64/10
-    '01111111'                         => 'LOOPBACK',    # 127.0/8
-    '1010100111111110'                 => 'LINK-LOCAL',  # 169.254/16
-    '101011000001'                     => 'PRIVATE',     # 172.16/12
-    '110000000000000000000000'         => 'RESERVED',    # 192.0.0/24
-    '110000000000000000000010'         => 'TEST-NET',    # 192.0.2/24
-    '110000000101100001100011'         => '6TO4-RELAY',  # 192.88.99.0/24 
-    '1100000010101000'                 => 'PRIVATE',     # 192.168/16
-    '110001100001001'                  => 'RESERVED',    # 198.18/15
-    '110001100011001101100100'         => 'TEST-NET',    # 198.51.100/24
-    '110010110000000001110001'         => 'TEST-NET',    # 203.0.113/24
-    '1110'                             => 'MULTICAST',   # 224/4
-    '1111'                             => 'RESERVED',    # 240/4
-    '11111111111111111111111111111111' => 'BROADCAST',   # 255.255.255.255/32
-);
- 
-# Definition of the Ranges for Ipv6 IPs
-my %IPv6ranges = (
-    '00000000'                                      => 'RESERVED',                  # ::/8
-    ('0' x 128)                                     => 'UNSPECIFIED',               # ::/128
-    ('0' x 127) . '1'                               => 'LOOPBACK',                  # ::1/128
-    ('0' x  80) . ('1' x 16)                        => 'IPV4MAP',                   # ::FFFF:0:0/96
-    '00000001'                                      => 'RESERVED',                  # 0100::/8
-    '0000000100000000' . ('0' x 48)                 => 'DISCARD',                   # 0100::/64
-    '0000001'                                       => 'RESERVED',                  # 0200::/7
-    '000001'                                        => 'RESERVED',                  # 0400::/6
-    '00001'                                         => 'RESERVED',                  # 0800::/5
-    '0001'                                          => 'RESERVED',                  # 1000::/4
-    '001'                                           => 'GLOBAL-UNICAST',            # 2000::/3
-    '0010000000000001' . ('0' x 16)                 => 'TEREDO',                    # 2001::/32
-    '00100000000000010000000000000010' . ('0' x 16) => 'BMWG',                      # 2001:0002::/48            
-    '00100000000000010000110110111000'              => 'DOCUMENTATION',             # 2001:DB8::/32
-    '0010000000000001000000000001'                  => 'ORCHID',                    # 2001:10::/28
-    '0010000000000010'                              => '6TO4',                      # 2002::/16
-    '010'                                           => 'RESERVED',                  # 4000::/3
-    '011'                                           => 'RESERVED',                  # 6000::/3
-    '100'                                           => 'RESERVED',                  # 8000::/3
-    '101'                                           => 'RESERVED',                  # A000::/3
-    '110'                                           => 'RESERVED',                  # C000::/3
-    '1110'                                          => 'RESERVED',                  # E000::/4
-    '11110'                                         => 'RESERVED',                  # F000::/5
-    '111110'                                        => 'RESERVED',                  # F800::/6
-    '1111110'                                       => 'UNIQUE-LOCAL-UNICAST',      # FC00::/7
-    '111111100'                                     => 'RESERVED',                  # FE00::/9
-    '1111111010'                                    => 'LINK-LOCAL-UNICAST',        # FE80::/10
-    '1111111011'                                    => 'RESERVED',                  # FEC0::/10
-    '11111111'                                      => 'MULTICAST',                 # FF00::/8
-);
-
-#------------------------------------------------------------------------------
-# Subroutine ip_iptypev4
-# Purpose           : Return the type of an IP (Public, Private, Reserved)
-# Params            : IP to test, IP version
-# Returns           : type or undef (invalid)
-sub ip_iptypev4 {
-    my ($ip) = @_;
-    no warnings "uninitialized";
- 
-    # check ip
-    if ($ip !~ m/^[01]{1,32}$/) {
-        $ERROR = "$ip is not a binary IPv4 address $ip";
-        $ERRNO = 180;
-        return;
-    }
-     
-    # see if IP is listed
-    foreach (sort { length($b) <=> length($a) } keys %IPv4ranges) {
-        return ($IPv4ranges{$_}) if ($ip =~ m/^$_/);
-    }
- 
-    # not listed means IP is public
-    return 'PUBLIC';
-}
- 
-#------------------------------------------------------------------------------
-# Subroutine ip_iptypev6
-# Purpose           : Return the type of an IP (Public, Private, Reserved)
-# Params            : IP to test, IP version
-# Returns           : type or undef (invalid)
-sub ip_iptypev6 {
-    my ($ip) = @_;
-    no warnings "uninitialized";
-
-    # check ip
-    if ($ip !~ m/^[01]{1,128}$/) {
-        $ERROR = "$ip is not a binary IPv6 address";
-        $ERRNO = 180;
-        return;
-    }
-     
-    foreach (sort { length($b) <=> length($a) } keys %IPv6ranges) {
-        return ($IPv6ranges{$_}) if ($ip =~ m/^$_/);
-    }
- 
-    # How did we get here? All IPv6 addresses should match 
-    $ERROR = "Cannot determine type for $ip";
-    $ERRNO = 180;
-    return;
-}
-
-#######
-#END COPY FROM Net::IP
 
 my @af_2_name;
 my %name_2_af;
@@ -150,7 +27,7 @@ my $IPV6_ANY="::";
 
 BEGIN{
 	#build a list of address family names from socket
-	my @names=grep /^AF_/, keys %Socket::;
+	my @names=grep /^AF_/, keys %Socket::More::Constants::;
 	no strict;
 	for my $name (@names){
 		my $val;
@@ -164,7 +41,7 @@ BEGIN{
 	}
 
 
-	@names=grep /^SOCK_/, keys %Socket::;
+	@names=grep /^SOCK_/, keys %Socket::More::Constants::;
 
 	#filter out the following bit masks on BSD, to prevent a huge array:
 	#define	SOCK_CLOEXEC	0x10000000
@@ -208,23 +85,37 @@ use Export::These qw<
   sockaddr_family
   getaddrinfo
   gai_strerror 
+
+  pack_sockaddr_un
+  unpack_sockaddr_un
+
+  pack_sockaddr_in
+  unpack_sockaddr_in
+
+  unpack_sockaddr_in6
+  pack_sockaddr_in6
+
+
+  getnameinfo
 >;
 
 sub _reexport {
   # Rexport symbols from socket
-  my $target=shift;
-  #Socket->import(":all") if @_;
+  #my $target=shift;
   Socket::More::Constaants->import;
 }
 
 our $VERSION = 'v0.4.4';
 
-sub getifaddrs;
-sub string_to_family;
-sub string_to_sock;
+#sub pack_sockaddr_un;
 
 require XSLoader;
 XSLoader::load('Socket::More', $VERSION);
+sub getifaddrs;
+sub string_to_family;
+sub string_to_sock;
+sub getaddrinfo;
+sub getnameinfo;
 
 #Socket stuff
 
@@ -237,6 +128,9 @@ sub sockaddr_family {
   # first byte is unsigned char length of struct, which is unused....?
   # The second byte is the family type
   unpack "C", substr($_[0],1,1);
+  #use Error::Show;
+  #say STDERR context(undef);
+  #Socket::sockaddr_family($_[0]);
 }
 
 
@@ -262,6 +156,49 @@ sub socket {
 
 #Network interface stuff
 #=======================
+#
+sub unpack_sockaddr_un {
+  #0 is sockaddr len (unused
+  #1 is family
+  #2 is start of data
+  unpack "A*", substr($_[0],2);
+}
+sub pack_sockaddr_un {
+  #0 is sockaddr len (unused
+  #1 is family
+  #2 is start of data
+  pack "CCA*", 0, AF_UNIX, $_[0];
+}
+
+
+sub pack_sockaddr_in {
+  #0 sockadd len
+  #1 family 
+  #2 start of data
+  #   2-3 port,
+  #   4-7 sock_addr
+  #   8-15 pad
+  #
+  pack "CCna4x8", 0, AF_INET, $_[0], $_[1];
+}
+
+sub unpack_sockaddr_in {
+
+  my ($port, $addr)=unpack "na4", substr($_[0], 2);
+  ($port,$addr);
+}
+
+
+sub pack_sockaddr_in6 {
+  #port, $ip, $scope $flow
+  pack "CCnNa16N", 0, AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+}
+
+sub unpack_sockaddr_in6{
+  my($port,$flow,$ip,$scope)=unpack "nNa16N", substr($_[0], 2);
+  ($port,$ip, $scope, $flow);
+}
+
 #Return a socket configured for the address
 
 sub unpack_sockaddr{
@@ -391,7 +328,17 @@ sub sockaddr_passive{
 		#@$address=($IPV4_ANY);
 		push @new_address, $IPV4_ANY;
 		push @new_fam, AF_INET;
-		push @new_interfaces, ({name=>$IPV4_ANY,addr=>pack_sockaddr_in 0, inet_pton AF_INET, $IPV4_ANY});
+    #push @new_interfaces, ({name=>$IPV4_ANY,addr=>pack_sockaddr_in 0, inet_pton AF_INET, $IPV4_ANY});
+    my @results;
+    Socket::More::getaddrinfo(
+      $IPV4_ANY,
+      "0",
+      {flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET},
+      \@results
+    );
+
+		push @new_interfaces, ({name=>$IPV4_ANY,addr=>$results[0]{addr}});
+      #pack_sockaddr_in 0, inet_pton AF_INET, $IPV4_ANY});
 	}
 
 	if(grep /$IPV6_ANY/, @$address){
@@ -400,7 +347,15 @@ sub sockaddr_passive{
 		#@$address=($IPV6_ANY);
 		push @new_address, $IPV6_ANY;
     push @new_fam, AF_INET6;
-    push @new_interfaces, ({name=>$IPV6_ANY, addr=>pack_sockaddr_in6 0, inet_pton AF_INET6, $IPV6_ANY});
+    #push @new_interfaces, ({name=>$IPV6_ANY, addr=>pack_sockaddr_in6 0, inet_pton AF_INET6, $IPV6_ANY});
+    my @results;
+    Socket::More::getaddrinfo(
+      $IPV6_ANY,
+      "0",
+      {flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET6},
+      \@results
+    );
+    push @new_interfaces, ({name=>$IPV6_ANY, addr=>$results[0]{addr}});
 	}
 
 	if(@new_address){
@@ -472,18 +427,27 @@ sub sockaddr_passive{
 			#Port or path needs to be set
 			if($fam == AF_INET){
 				my (undef, $ip)=unpack_sockaddr_in($interface->{addr});
+
+        # Get the hostname/ip address as human readable string aka inet_ntop($fam, $ip);
+        getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
+
+				$clone->{address}=$host;
+
+        # Pack with desired port
 				$clone->{addr}=pack_sockaddr_in($_->{port},$ip);
-				$clone->{address}=inet_ntop($fam, $ip);
+
 				#$interface->{port}=$_->{port};
 				$clone->{interface}=$interface->{name};
-				$clone->{group}=ip_iptypev4 ip2bin($clone->{address});
+        $clone->{group}=ipv4_group $clone->{address};#ip_iptypev4 ip2bin($clone->{address});
 			}
 			elsif($fam == AF_INET6){
 				my(undef, $ip, $scope, $flow_info)=unpack_sockaddr_in6($interface->{addr});
-				$clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope,$flow_info);
-				$clone->{address}=inet_ntop($fam, $ip);
+        getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
+				$clone->{address}=$host;#inet_ntop($fam, $ip);
+
+				$clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope, $flow_info);
 				$clone->{interface}=$interface->{name};
-				$clone->{group}=ip_iptypev6 ip2bin($clone->{address});
+        $clone->{group}=ipv6_group $clone->{address};#ip_iptypev6 ip2bin($clone->{address});
 			}
 			elsif($fam == AF_UNIX){
 				my $suffix=$_->{type}==SOCK_STREAM?"_S":"_D";
@@ -669,7 +633,7 @@ sub _reify_ports {
 
     my $shared=shift;
     #if any specs contain a 0 for the port number, then perform a bind to get one from the OS.
-    #Then close the socket, an hope that no one takes it :)
+    #Then close the socket, and hope that no one takes it :)
     
     my $port;
     map {
@@ -684,9 +648,11 @@ sub _reify_ports {
           die "Could not bind socket to reify port" unless bind($sock, $_->{addr});
           my $name=getsockname $sock;
 
-          my ($err, $a, $port)=getnameinfo($name, NI_NUMERICHOST);
+          #my ($err, $a, $port)=getnameinfo($name, NI_NUMERICHOST);
+          #my ($err, $a, $port)=
+          my $ok=getnameinfo($name, my $host="", my $port="", NI_NUMERICHOST);
 
-          unless($err){
+          if($ok){
             $_->{port}=$port;
           }
           close $sock;

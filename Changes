@@ -1,4 +1,10 @@
 Revision history for Perl extension Socket::More.
+v0.5.0  2023-09-30
+  [features]
+    - Removed runtime dependancie on Socket
+    - Implemented getaddrinfo and getnameinfo
+    - Implemented sockaddr_active to complement sockaddr_passive 
+
 v0.4.3 2023-09-05
   [changes]
     - All symbols are exported by default. No longer need the :all tag

@@ -15,37 +15,60 @@ BEGIN { use_ok('Socket::More') };
 
   use Data::Dumper;
 {
-  # getaddrinfo
+  #Pack unpack ipv4
+  my $perl=Socket::pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
+  my $sm=pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
+  ok substr($perl, 1) eq substr($sm,1);
+  
+  my($pport,$paddr)=Socket::unpack_sockaddr_in($perl);
+  my($smport,$smaddr)=unpack_sockaddr_in($sm);
 
+  ok $pport eq $smport;
+  ok $paddr eq $smaddr;
+}
+{
+  #Pack unpack ipv6
+  my $perl=Socket::pack_sockaddr_in6(1234, pack "C16",( (0)x16));
+  my $sm=pack_sockaddr_in6(1234, pack "C16", ((0)x16));
+  ok substr($perl, 1) eq substr($sm,1);
+  
+  my($pport,$paddr)=Socket::unpack_sockaddr_in6($perl);
+  my($smport,$smaddr)=unpack_sockaddr_in6($sm);
+
+  ok $pport eq $smport;
+  ok $paddr eq $smaddr;
+}
+
+{
+  # getaddrinfo
   my $res=Socket::More::getaddrinfo("www.google.com", "80", undef, my @results);
-  say STDERR Dumper \$res;
-  ok $res==0, "Return ok";
+  ok $res, "Return ok";
   ok @results>0, "Results ok";
   for(@results){
-    say STDERR "val: $_";
     for my ($k, $v)($_->%*){
-      say STDERR "$k=>$v";
+      #say STDERR "$k=>$v";
     }
   }
-say STDERR "CONSTANTS: ", Socket::More::EAI_ADDRFAMILY;
-say STDERR "CONSTANTS: ", Socket::More::EAI_AGAIN;
+}
+
+{
+  # get name info
+      my $name=pack_sockaddr_in(1234, pack "C4", 127,0,0,1);
+      my $err=getnameinfo($name, my $ip="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
 }
 {
 	#Test socket wrapper
-  say STDERR "NUMERIC HOST IS ". NI_NUMERICHOST;
-  my $res=getaddrinfo("127.0.0.1", "1234",{flags=>NI_NUMERICHOST,family=>AF_INET},my @results);
-  
-  say STDERR gai_strerror $res;
-  say STDERR Dumper $results[0];
+  my $res=Socket::More::getaddrinfo("127.0.0.1", "1234",{flags=>NI_NUMERICHOST,family=>AF_INET},my @results);
+  die $! unless $res;
   #my $sock_addr=pack_sockaddr_in(1234, Socket::inet_pton(AF_INET, "127.0.0.1"));
 	my $sock_addr=$results[0]{addr};#pack_sockaddr_in(1234, $results[0]{addr});
 	socket my $normal,AF_INET, SOCK_STREAM, 0;
 	ok $normal, "Normal socket created";
 
-	CORE::socket my $core, AF_INET, SOCK_STREAM,0;
+	CORE::socket my $core, AF_INET, SOCK_STREAM, 0;
 	ok $core, "Core socket created";
 
-	socket my $wrapper, $sock_addr, SOCK_STREAM,0;
+	socket my $wrapper, $sock_addr, SOCK_STREAM, 0;
 	ok $wrapper, "Wrapper socket created";
 	
 	my $interface={family=>AF_INET,type=>SOCK_STREAM, protocol=>0};
@@ -54,7 +77,6 @@ say STDERR "CONSTANTS: ", Socket::More::EAI_AGAIN;
 	ok getsockname($normal) eq getsockname($core), "Sockets ok";
 	ok getsockname($wrapper) eq getsockname($core), "Sockets ok";
 	ok getsockname($hash) eq getsockname($core), "Socket ok";
-	
 }
 
 {
@@ -119,7 +141,6 @@ say STDERR "CONSTANTS: ", Socket::More::EAI_AGAIN;
 }
 
 {
-	#say STDERR "BIND testing";
 	#Attempt to bind our listeners
 	my $unix_sock_name="test_sock";
 
@@ -136,14 +157,13 @@ say STDERR "CONSTANTS: ", Socket::More::EAI_AGAIN;
 	});
 
 	for(@results){
-		#say STDERR "ADDRESS/path: ".$_->{address};
 		#unlink $_->{address};
 		die "Could not make socket $!" unless socket my $socket, $_->{family}, SOCK_STREAM, 0;
 		die "Could not bind $!" unless bind $socket, $_->{addr};
 
 		my $name=getsockname($socket);
 		if($_->{family}==AF_UNIX){
-			my $path=unpack_sockaddr_un($name);
+			my $path=Socket::More::unpack_sockaddr_un($name);
 			#ok $path eq $unix_sock_name;
 			close $socket;
 			$u_name=$unix_sock_name."_S";
@@ -154,7 +174,8 @@ say STDERR "CONSTANTS: ", Socket::More::EAI_AGAIN;
 		}
 		elsif($_->{family} ==AF_INET or  $_->{family}== AF_INET6){
 			#Check whe got a non zero port
-			my($err, $ip, $port)=getnameinfo($name, NI_NUMERICHOST|NI_NUMERICSERV);
+      #my($err, $ip, $port)=getnameinfo($name, NI_NUMERICHOST|NI_NUMERICSERV);
+			my $err=getnameinfo($name, my $ip, my $port, NI_NUMERICHOST|NI_NUMERICSERV);
 			ok $port != 0, "Non zero port";
 			close $socket;
 
@@ -167,7 +188,6 @@ say STDERR "CONSTANTS: ", Socket::More::EAI_AGAIN;
 	
 }
 {
-	#say STDERR "Interger to string tests";
 	#Test the af 2 name and name 2 af 
 	#Each system is different by we assume that AF_INET and AF_INET6 are always available
 	

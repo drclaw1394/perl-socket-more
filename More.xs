@@ -222,6 +222,7 @@ getaddrinfo(hostname, servicename, hints, results)
     struct addrinfo h;
     struct addrinfo *next;
     int len;
+    SV *temp;
     
 
   PPCODE: 
@@ -247,10 +248,20 @@ getaddrinfo(hostname, servicename, hints, results)
     }
     else{
     }
-    if(SvOK(servicename) && SvPOK(servicename)){
-      len=SvCUR(servicename);
-      sname=SvPVX(servicename);//SvGROW(servicename,1);
-      sname[len]='\0';
+    if(SvOK(servicename)){
+      if(SvPOK(servicename)){
+        len=SvCUR(servicename);
+        sname=SvPVX(servicename);//SvGROW(servicename,1);
+        sname[len]='\0';
+      }
+      else if (SvIOK(servicename)){
+        temp=newSVpvf("%" SVf , SVfARG(servicename));
+        len=SvCUR(temp);
+        sname=SvPVX(temp);
+        sname[len]='\0';
+      }
+
+
     }
 
     if(SvOK(hints) && SvROK(hints)){

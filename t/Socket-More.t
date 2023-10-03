@@ -18,6 +18,9 @@ BEGIN { use_ok('Socket::More') };
   #Pack unpack ipv4
   my $perl=Socket::pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
   my $sm=pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
+  #say STDERR "";
+  #say STDERR unpack "H*", $perl;
+  #say STDERR unpack "H*", $sm;
   ok substr($perl, 1) eq substr($sm,1);
   
   my($pport,$paddr)=Socket::unpack_sockaddr_in($perl);
@@ -38,11 +41,21 @@ BEGIN { use_ok('Socket::More') };
   ok $pport eq $smport;
   ok $paddr eq $smaddr;
 }
+{
+  # Sock  family
+  my $in4=Socket::pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
+  my $in6=Socket::pack_sockaddr_in6(1234, pack "C16",( (0)x16));
+
+  my $p=Socket::sockaddr_family($in4);
+  my $sm=sockaddr_family($in4);
+
+}
 
 {
   # getaddrinfo
   my $res=Socket::More::getaddrinfo("www.google.com", "80", undef, my @results);
   ok $res, "Return ok";
+  die gai_strerror $! unless $res;
   ok @results>0, "Results ok";
   for(@results){
     #for my ($k, $v)($_->%*){
@@ -60,7 +73,7 @@ BEGIN { use_ok('Socket::More') };
 {
 	#Test socket wrapper
   my $res=Socket::More::getaddrinfo("127.0.0.1", "1234",{flags=>NI_NUMERICHOST,family=>AF_INET},my @results);
-  die $! unless $res;
+  die gai_strerror $! unless $res;
   #my $sock_addr=pack_sockaddr_in(1234, Socket::inet_pton(AF_INET, "127.0.0.1"));
 	my $sock_addr=$results[0]{addr};#pack_sockaddr_in(1234, $results[0]{addr});
 	socket my $normal,AF_INET, SOCK_STREAM, 0;

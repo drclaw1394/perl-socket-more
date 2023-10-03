@@ -126,7 +126,15 @@ sub string_to_sock;
 sub sockaddr_family {
   # first byte is unsigned char length of struct, which is unused....?
   # The second byte is the family type
-  unpack "C", substr($_[0],1,1);
+  my $format;
+  if($^O =~ /darwin/){
+      $format= "xC";
+  }
+  elsif($^O =~ /linux/) {
+      $format="s";
+  }
+  unpack $format, $_[0]; #substr($_[0],1,1);
+
   #use Error::Show;
   #say STDERR context(undef);
   #Socket::sockaddr_family($_[0]);
@@ -178,7 +186,15 @@ sub pack_sockaddr_in {
   #   4-7 sock_addr
   #   8-15 pad
   #
-  pack "CCna4x8", 0, AF_INET, $_[0], $_[1];
+  my $format;
+  if($^O =~ /darwin/){
+      $format= "xCna4x8";
+  }
+  elsif($^O =~ /linux/) {
+      $format="sna4x8";
+  }
+
+  pack $format, AF_INET, $_[0], $_[1];
 }
 
 sub unpack_sockaddr_in {
@@ -190,7 +206,14 @@ sub unpack_sockaddr_in {
 
 sub pack_sockaddr_in6 {
   #port, $ip, $scope $flow
-  pack "CCnNa16N", 0, AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+  my $format;
+  if($^O =~ /darwin/){
+      $format= "xCnNa16N";
+  }
+  elsif($^O =~ /linux/) {
+      $format="snNa16N";
+  }
+  pack $format,  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
 }
 
 sub unpack_sockaddr_in6{

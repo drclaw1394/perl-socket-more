@@ -278,16 +278,15 @@ getaddrinfo(hostname, servicename, hints, results)
 
     //XSRETURN_UNDEF;
 
-    ret=getaddrinfo(hname, sname, &h,&res);
-
+    ret=getaddrinfo(hname, sname, &h, &res);
 
 
     if(ret!=0){
       // The return array to error?
-
-      SV * e=get_sv("!",GV_ADD);
-      sv_setiv(e, ret);
-      sv_setpv(e, gai_strerror(ret));
+      errno=ret;
+      //SV * e=get_sv("!",GV_ADD);
+      //sv_setiv(e, ret);
+      //sv_setpv(e, gai_strerror(ret));
       XSRETURN_UNDEF;
     }
     else{
@@ -398,8 +397,9 @@ getnameinfo(address, IN_OUT hostname, IN_OUT servicename, flags)
     }
     else {
       //return as error, and set errno
-      SV * e=get_sv("!",GV_ADD);
-      sv_setiv(e, ret);
-      sv_setpv(e, gai_strerror(ret));
+      errno=ret;
+      //SV * e=get_sv("!",GV_ADD);
+      //sv_setiv(e, ret);
+      //sv_setpv(e, gai_strerror(ret));
       XSRETURN_UNDEF; 
     }

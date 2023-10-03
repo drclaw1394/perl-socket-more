@@ -2,16 +2,8 @@ package Socket::More;
 
 use 5.036000;
 
-#pack_sockaddr_in
-#unpack_sockaddr_in
-#sockaddr_family 
-#unpack_sockaddr_un
-# ":all";
 use Socket::More::Constants;
 
-#use AutoLoader;
-
-#use Net::IP::Lite qw<ip2bin>;
 use Data::Cmp qw<cmp_data>;
 use Data::Combination;
 
@@ -21,8 +13,9 @@ my @af_2_name;
 my %name_2_af;
 my @sock_2_name;
 my %name_2_sock;
-my $IPV4_ANY="0.0.0.0";
-my $IPV6_ANY="::";
+
+use constant::more  IPV4_ANY=>"0.0.0.0",
+                    IPV6_ANY=>"::";
 
 BEGIN{
 	#build a list of address family names from socket
@@ -99,8 +92,6 @@ use Export::These qw<
 >;
 
 sub _reexport {
-  # Rexport symbols from socket
-  #my $target=shift;
   Socket::More::Constants->import;
 }
 
@@ -123,27 +114,25 @@ sub string_to_sock;
 #Otherwise, extract socket family from assumed sockaddr and then call core
 
 
-sub sockaddr_family {
-  # first byte is unsigned char length of struct, which is unused....?
-  # The second byte is the family type
-  my $format;
+use constant::more PACK_FAMILY=>do {
   if($^O =~ /darwin/){
-      $format= "xC";
+    "xC";
   }
   elsif($^O =~ /linux/) {
-      $format="s";
+      "s";
   }
-  unpack $format, $_[0]; #substr($_[0],1,1);
+  else {
+      "s";
+  }
+};
 
-  #use Error::Show;
-  #say STDERR context(undef);
-  #Socket::sockaddr_family($_[0]);
+sub sockaddr_family {
+  unpack PACK_FAMILY, $_[0];
 }
 
 
 
 sub socket {
-
 	require Scalar::Util;
 	#qw<looks_like_number>;
 	return &CORE::socket if Scalar::Util::looks_like_number $_[1];
@@ -164,56 +153,63 @@ sub socket {
 #Network interface stuff
 #=======================
 #
+use constant::more PACK_SOCKADDR_UN=>do {
+  if($^O =~ /darwin/){
+      "xCA*";
+  }
+  elsif($^O =~ /linux/) {
+      "sA*";
+  }
+  else {
+      "sA*";
+  }
+};
+
 sub unpack_sockaddr_un {
-  #0 is sockaddr len (unused
-  #1 is family
-  #2 is start of data
-  unpack "A*", substr($_[0],2);
+  unpack PACK_SOCKADDR_UN, substr($_[0],2);
 }
+
 sub pack_sockaddr_un {
-  #0 is sockaddr len (unused
-  #1 is family
-  #2 is start of data
-  pack "CCA*", 0, AF_UNIX, $_[0];
+  pack PACK_SOCKADDR_UN, AF_UNIX, $_[0];
 }
+
+use constant::more PACK_SOCKADDR_IN=>do {
+  if($^O =~ /darwin/){
+      "xCna4x8";
+  }
+  elsif($^O =~ /linux/) {
+      "sna4x8";
+  }
+  else {
+      "sna4x8";
+  }
+};
 
 
 sub pack_sockaddr_in {
-  #0 sockadd len
-  #1 family 
-  #2 start of data
-  #   2-3 port,
-  #   4-7 sock_addr
-  #   8-15 pad
-  #
-  my $format;
-  if($^O =~ /darwin/){
-      $format= "xCna4x8";
-  }
-  elsif($^O =~ /linux/) {
-      $format="sna4x8";
-  }
-
-  pack $format, AF_INET, $_[0], $_[1];
+  pack PACK_SOCKADDR_IN, AF_INET, $_[0], $_[1];
 }
 
 sub unpack_sockaddr_in {
-
   my ($port, $addr)=unpack "na4", substr($_[0], 2);
   ($port,$addr);
 }
 
 
-sub pack_sockaddr_in6 {
-  #port, $ip, $scope $flow
-  my $format;
+use constant::more PACK_SOCKADDR_IN6=>do {
   if($^O =~ /darwin/){
-      $format= "xCnNa16N";
+   "xCnNa16N"
   }
   elsif($^O =~ /linux/) {
-      $format="snNa16N";
+      "snNa16N";
   }
-  pack $format,  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+  else {
+      "snNa16N";
+  }
+};
+
+sub pack_sockaddr_in6 {
+  pack PACK_SOCKADDR_IN6,  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
 }
 
 sub unpack_sockaddr_in6{
@@ -232,12 +228,13 @@ sub unpack_sockaddr{
 	elsif($family==AF_INET6){
 		return unpack_sockaddr_in6 $addr;
 	}
+  elsif($family == AF_UNIX){
+		return unpack_sockaddr_un $addr;
+  }
 	else {
 		die "upack_sockaddr: unsported family type";
 	}
 }
-
-
 
 
 #Used as pseudo interface for filtering to work
@@ -255,7 +252,7 @@ sub sockaddr_passive{
 	require Scalar::Util;
 	my ($spec)=@_;
 	my $r={};
-	#my $sort_order=$spec->{sort}//$_default_sort_order;
+
 	#If no interface provided assume all
 	$r->{interface}=$spec->{interface}//".*";
 	
@@ -347,40 +344,33 @@ sub sockaddr_passive{
 	my @new_spec_int;
 	my @new_fam;
 
-	if(grep /$IPV4_ANY/, @$address){
-		#$r->{interface}=[$IPV4_ANY];
-		push @new_spec_int, $IPV4_ANY;
-		#@$address=($IPV4_ANY);
-		push @new_address, $IPV4_ANY;
+	if(grep /${\IPV4_ANY()}/, @$address){
+		push @new_spec_int, IPV4_ANY;
+		push @new_address, IPV4_ANY;
 		push @new_fam, AF_INET;
-    #push @new_interfaces, ({name=>$IPV4_ANY,addr=>pack_sockaddr_in 0, inet_pton AF_INET, $IPV4_ANY});
     my @results;
     Socket::More::getaddrinfo(
-      $IPV4_ANY,
+      IPV4_ANY,
       "0",
       {flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET},
       \@results
     );
 
-		push @new_interfaces, ({name=>$IPV4_ANY,addr=>$results[0]{addr}});
-      #pack_sockaddr_in 0, inet_pton AF_INET, $IPV4_ANY});
+		push @new_interfaces, ({name=>IPV4_ANY,addr=>$results[0]{addr}});
 	}
 
-	if(grep /$IPV6_ANY/, @$address){
-		#$r->{interface}=[$IPV6_ANY];
-		push @new_spec_int, $IPV6_ANY;
-		#@$address=($IPV6_ANY);
-		push @new_address, $IPV6_ANY;
+	if(grep /${\IPV6_ANY()}/, @$address){
+		push @new_spec_int, IPV6_ANY;
+		push @new_address, IPV6_ANY;
     push @new_fam, AF_INET6;
-    #push @new_interfaces, ({name=>$IPV6_ANY, addr=>pack_sockaddr_in6 0, inet_pton AF_INET6, $IPV6_ANY});
     my @results;
     Socket::More::getaddrinfo(
-      $IPV6_ANY,
+      IPV6_ANY,
       "0",
       {flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET6},
       \@results
     );
-    push @new_interfaces, ({name=>$IPV6_ANY, addr=>$results[0]{addr}});
+    push @new_interfaces, ({name=>IPV6_ANY, addr=>$results[0]{addr}});
 	}
 
 	if(@new_address){
@@ -554,7 +544,7 @@ sub parse_passive_spec {
 							#$spec{address}=['^127.0.0.1$','^::1$'];
 						}
 						elsif($spec{address}[0] eq ""){
-							$spec{address}=[$IPV6_ANY, $IPV4_ANY];
+							$spec{address}=[IPV6_ANY, IPV4_ANY];
 
 							#$spec{family}=[AF_INET, AF_INET6];
 						}
@@ -618,12 +608,6 @@ sub parse_passive_spec {
 	}
 	@output;
 }
-
-# Build address structures to connect to remote/passive/listening peers
-sub sockaddr_active{
-
-}
-
 
 
 sub family_to_string { $af_2_name[$_[0]]; }
@@ -711,13 +695,6 @@ sub reify_ports_unshared {
     _reify_ports 0, @_;
 }
 
-sub sockaddr_valid {
-	#Determin if the sock address is still a valid passive address
-}
-
-sub monitor {
-
-}
 
 1;
 __END__

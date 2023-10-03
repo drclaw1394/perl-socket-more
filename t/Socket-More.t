@@ -4,7 +4,7 @@ use warnings;
 use Test::More;
 use Data::Cmp qw<cmp_data>;
 
-use Socket;# qw<:all>;
+use Socket();
 use Socket::More::Constants;
 use feature "say";
 
@@ -189,7 +189,7 @@ BEGIN { use_ok('Socket::More') };
 		elsif($_->{family} ==AF_INET or  $_->{family}== AF_INET6){
 			#Check whe got a non zero port
       #my($err, $ip, $port)=getnameinfo($name, NI_NUMERICHOST|NI_NUMERICSERV);
-			my $err=getnameinfo($name, my $ip, my $port, NI_NUMERICHOST|NI_NUMERICSERV);
+			my $err=getnameinfo($name, my $ip="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
 			ok $port != 0, "Non zero port";
 			close $socket;
 

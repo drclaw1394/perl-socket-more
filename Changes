@@ -1,23 +1,24 @@
 Revision history for Perl extension Socket::More.
 v0.5.0  2023-09-30
   [features]
+    - Decomposed into multiple sub modules for CPAN
+      - Socket::More::Lookup => getaddrinfo/getnameinfo
+      - Socket::More::Constants => supported constants for your system
+      - Scoket::More::Interface => getifaddrs et all
+
     - Removed runtime dependancie on Socket
     - Networking related constants contained in Socket::More::Constants
     - IP grouping/ranges refactored into seperate module
-      -TODO load at when required or implement own group code
 
-    - Implemented getaddrinfo and getnameinfo
+    - Implemented getaddrinfo, getnameinfo gai_strerror (via Socket::More::Lookup)
     - Implemented pack/unpack_sockaddr_un/in/in6 and sockaddr_family
-    - Implemented gai_strerror
         
-    - TODO update pod with new functions
+    - Updated pod with new functions
       - calling convention is different to socket
 
-    - TODO fix error setting for $!
-    - TODO fix integer value for port number
 
     [imporvements]
-      - reduced memory overhead but not requiring Socket
+      - reduced memory overhead but not requiring Socket at runtime
       - reduce memeory overhead by only processing ip ranges/groups when asked
         for in sockaddr_passive specificaiton
 

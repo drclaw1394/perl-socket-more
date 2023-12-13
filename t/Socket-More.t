@@ -6,6 +6,7 @@ use Data::Cmp qw<cmp_data>;
 
 use Socket();
 use Socket::More::Constants;
+use Socket::More::Lookup;
 use feature "say";
 
 
@@ -51,28 +52,10 @@ BEGIN { use_ok('Socket::More') };
 
 }
 
-{
-  # getaddrinfo
-  my $res=Socket::More::getaddrinfo("www.google.com", "80", undef, my @results);
-  ok $res, "Return ok";
-  die gai_strerror $! unless $res;
-  ok @results>0, "Results ok";
-  for(@results){
-    #for my ($k, $v)($_->%*){
-      #say STDERR "$k=>$v";
-      #}
-  }
-}
-
-{
-  # get name info
-      my $name=pack_sockaddr_in(1234, pack "C4", 127,0,0,1);
-      my $err=getnameinfo($name, my $ip="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
-}
 
 {
 	#Test socket wrapper
-  my $res=Socket::More::getaddrinfo("127.0.0.1", "1234",{flags=>NI_NUMERICHOST,family=>AF_INET},my @results);
+  my $res=Socket::More::Lookup::getaddrinfo("127.0.0.1", "1234",{flags=>NI_NUMERICHOST,family=>AF_INET},my @results);
   die gai_strerror $! unless $res;
   #my $sock_addr=pack_sockaddr_in(1234, Socket::inet_pton(AF_INET, "127.0.0.1"));
 	my $sock_addr=$results[0]{addr};#pack_sockaddr_in(1234, $results[0]{addr});
@@ -93,11 +76,6 @@ BEGIN { use_ok('Socket::More') };
 	ok getsockname($hash) eq getsockname($core), "Socket ok";
 }
 
-{
-	#Do we get any interfaces at all?
-	my @interfaces=Socket::More::getifaddrs;
-	ok @interfaces>=1, "interfaces returned";
-}
 
 {
 	#No port or no path should give 0 results

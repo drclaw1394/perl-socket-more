@@ -2,7 +2,7 @@ package Socket::More;
 
 use 5.036000;
 
-use Socket::More::Constants;
+use Import::These qw<Socket::More:: Constants Lookup Interface>;
 
 use Data::Cmp qw<cmp_data>;
 use Data::Combination;
@@ -57,26 +57,28 @@ BEGIN{
 
 
 use Export::These qw<
-	getifaddrs
 	sockaddr_passive
+	parse_passive_spec
+
 	socket
+
 	family_to_string
 	string_to_family
+
 	sock_to_string
 	string_to_sock
-	parse_passive_spec
+
 	unpack_sockaddr
-	if_nametoindex
-	if_indextoname
-	if_nameindex
+
+
 	has_IPv4_interface
 	has_IPv6_interface
+
   reify_ports
   reify_ports_unshared
 
   sockaddr_family
-  getaddrinfo
-  gai_strerror 
+
 
   pack_sockaddr_un
   unpack_sockaddr_un
@@ -88,30 +90,18 @@ use Export::These qw<
   pack_sockaddr_in6
 
 
-  getnameinfo
 >;
 
 sub _reexport {
   Socket::More::Constants->import;
+  Socket::More::Lookup->import;
+  Socket::More::Interface->import;
 }
 
 our $VERSION = 'v0.5.0';
 
-#sub pack_sockaddr_un;
-
-require XSLoader;
-XSLoader::load('Socket::More', $VERSION);
-sub getifaddrs;
 sub string_to_family;
 sub string_to_sock;
-#sub getaddrinfo :PROTO($$$\@);
-#sub getnameinfo :PROTO($$$$);
-
-#Socket stuff
-
-#Basic wrapper around CORE::socket.
-#If it looks like an number: Use core perl
-#Otherwise, extract socket family from assumed sockaddr and then call core
 
 
 use constant::more PACK_FAMILY=>do {
@@ -349,11 +339,11 @@ sub sockaddr_passive{
 		push @new_address, IPV4_ANY;
 		push @new_fam, AF_INET;
     my @results;
-    Socket::More::getaddrinfo(
+    Socket::More::Lookup::getaddrinfo(
       IPV4_ANY,
       "0",
       {flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET},
-      \@results
+      @results
     );
 
 		push @new_interfaces, ({name=>IPV4_ANY,addr=>$results[0]{addr}});
@@ -364,11 +354,11 @@ sub sockaddr_passive{
 		push @new_address, IPV6_ANY;
     push @new_fam, AF_INET6;
     my @results;
-    Socket::More::getaddrinfo(
+    Socket::More::Lookup::getaddrinfo(
       IPV6_ANY,
       "0",
       {flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET6},
-      \@results
+      @results
     );
     push @new_interfaces, ({name=>IPV6_ANY, addr=>$results[0]{addr}});
 	}
@@ -444,7 +434,7 @@ sub sockaddr_passive{
 				my (undef, $ip)=unpack_sockaddr_in($interface->{addr});
 
         # Get the hostname/ip address as human readable string aka inet_ntop($fam, $ip);
-        getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
+        Socket::More::Lookup::getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
 
 				$clone->{address}=$host;
 
@@ -460,7 +450,7 @@ sub sockaddr_passive{
 			}
 			elsif($fam == AF_INET6){
 				my(undef, $ip, $scope, $flow_info)=unpack_sockaddr_in6($interface->{addr});
-        getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
+        Socket::More::Lookup::getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
 				$clone->{address}=$host;#inet_ntop($fam, $ip);
 
 				$clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope, $flow_info);
@@ -521,7 +511,7 @@ sub sockaddr_passive{
 sub parse_passive_spec {
 	#splits a string by : and tests each set
 	my @output;
-	my @full=qw<interface type protocol family port path address group data>;
+	my @full=qw<interface type socktype protocol family port path address group data>;
 	for my $input(@_){
 		my %spec;
 
@@ -672,7 +662,7 @@ sub _reify_ports {
 
           #my ($err, $a, $port)=getnameinfo($name, NI_NUMERICHOST);
           #my ($err, $a, $port)=
-          my $ok=getnameinfo($name, my $host="", my $port="", NI_NUMERICHOST);
+          my $ok=Socket::More::Lookup::getnameinfo($name, my $host="", my $port="", NI_NUMERICHOST);
 
           if($ok){
             $_->{port}=$port;
@@ -688,9 +678,11 @@ sub _reify_ports {
     sockaddr_passive @_;
 
 }
+
 sub reify_ports {
     _reify_ports 1, @_;
 }
+
 sub reify_ports_unshared {
     _reify_ports 0, @_;
 }

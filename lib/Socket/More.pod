@@ -26,7 +26,7 @@ family, port  and paths are discarded:
   #
 	for(@passive){
 		say $_->{address};
-		socket my $socket, $_->{family}, $_->{type}, 0;
+		socket my $socket, $_->{family}, $_->{socktype}, 0;
 		bind $socket $_->{addr};
 	}
 
@@ -34,7 +34,7 @@ Please see EXAMPLES section for more.
 
 =head1 DESCRIPTION
 
-Intended as a replacement for L<Socket>, implementing only 'modern subset' of
+Intended as an alternative for L<Socket>, implementing only 'modern subset' of
 routines. It providing extra routines to make listening addresses easy, to solve
 problems like this:
 
@@ -47,13 +47,14 @@ problems like this:
 	'listen on all interfaces on port 8080 and 8081, but only on link local
 	ipv6 address'
 
+It also is a umbrella package, which reexports  L<Socket::More::Constants>,
+L<Socket::More::Lookup> and L<Socket::More::Interface> for you.
 
 It also makes it easy to generate 'random' ports to bind to, B<before> your
 program binds, to aid in testing server scenarios.
 
-Note this is a subset of L<Socket>. Currently the multicast routines are not
-implemented. The 'old school' inet_* functions are deliberately not included,
-to encourage the usage of getnameinfo/getaddrinfo.
+Note this is a subset of L<Socket> functionality.  The 'old school' inet_* functions are
+deliberately not included, to encourage the usage of getnameinfo/getaddrinfo.
 
 
 From version v0.5.0, the module has been decomposed to to separate modules on
@@ -82,18 +83,19 @@ sockets using a query and consise command line syntax
 
 =item L<Socket::More::Constants>
 
-Contains all the networking constants (ie C<AF_INET>, C<NI_NUMERICHOST>, etc) for
-your platform.
+Contains all the networking constants (ie C<AF_INET>, C<NI_NUMERICHOST>, etc)
+for your platform.
 
 =item L<Socket::More::Lookup>
 
-Implements and exports C<getaddrinfo>, C<getnameinfo> and C<gai_strerror>, with a different
-calling convention then perl core Socket implementation.
+Implements and exports C<getaddrinfo>, C<getnameinfo> and C<gai_strerror>, with
+a different calling convention then Perl core Socket implementation.  More like
+C<sysread> convention
 
 =item L<Socket::More::Interface>
 
-Implements and exports C<getifaddrs>, C<if_nametoindex>, C<if_indextoname> and C<if_nameindex>
-to query the interfaces of your system
+Implements and exports C<getifaddrs>, C<if_nametoindex>, C<if_indextoname> and
+C<if_nameindex> to query the interfaces of your system
 
 =back
 
@@ -115,8 +117,8 @@ information.
 
 =head1 API
 
-From version v0.5.0 the structure of the module has been slit into other
-modules. The same API is accessable from this module, as it imports them and
+From version v0.5.0 the structure of the module has been refactored into other
+modules. The same API is accessible from this module, as it imports them and
 reexports their subroutines/constants. If you don't need the easy listening
 features of this module, then you can use these modules independently.
 
@@ -160,23 +162,25 @@ This is useful for handling address families supplied from the command line, as
 abbreviated names can be matched.
 
 
-=head2 sock_to_string
+=head2 socktype_to_string or sock_to_string
 
-	my $string=sock_to_string($type);
+	my $string=socktype_to_string($type);
 
 Returns a string label representing a socket type C<$type>. For example,
 calling with the integer constant C<SOCK_STREAM>, will return a string
 C<"SOCK_STREAM">
 
-=head2 string_to_sock
+=head2 string_to_socktype  or string_to_type
 
-	my @type=string_to_family($string);
+	my @type=string_to_socktype($string);
 
 Performs a match of all SOCK_.* names against C<$pattern>. Returns a list of
 integers for the corresponding socket types that matched. Returns an empty list
-if the patten/string does not match. The match is performed insensitive to case.
+if the patten/string does not match. The match is performed insensitive to
+case.
 
-For example calling with C<"STREAM"> will return a list of one element, C<SOCK_STREAM>.
+For example calling with C<"STREAM"> will return a list of one element,
+C<SOCK_STREAM>.
 
 This is useful for handling address families supplied from the command line, as
 abbreviated names can be matched.
@@ -195,6 +199,9 @@ It has some overlapping function of C<getaddrinfo>, however it is specifically
 for creating addresses for binding, allows the use of interface names and
 operates with UNIX domain configurations through a synthetic  'unix' interface.
 
+From B<v0.5.0> the results will return interface information in an addition
+field.
+
 A specification hash has optional keys which dictate what addresses are
 generated and filtered:
 
@@ -209,8 +216,8 @@ The only required keys are C<port> and/or C<path>. These are used in the
 address generation and not as a filter. Without at least one of these keys, no
 results will be generated. 
 
-Other keys like C<interface>, C<family>  and C<type> for example are used to
-restrict addresses created to the match 
+Other keys like C<interface>, C<family>  and C<socktype> for example are used
+to restrict addresses created to the match 
 
 Keys like C<address> and C<group> are a filter which are directly matched
 against the address and group.
@@ -226,7 +233,7 @@ are:
 		po=>...		#port
 		pa=>...		#path
 		a=>...		#address
-		t=>...		#type
+		s=>...		#socktype
 		g=>...		#group
 	}
 
@@ -257,9 +264,9 @@ supports.
 B<From v0.4.0:> Also can be a string or array ref of strings, which are matched
 against supported families. See C<parse_passive_spec> for matching details
 
-=item type
+=item socktype (was type)
 
-	examples: type=>SOCK_STREAM type=>[SOCK_STREAM, SOCK_DGRAM]
+	examples: socktype=>SOCK_STREAM socktype=>[SOCK_STREAM, SOCK_DGRAM]
 
 A integer or array ref of integers representing the socket type an interface
 supports.
@@ -342,8 +349,8 @@ key.
 
 C<port> and C<path> keys take literal values.
 
-C<family> and C<type> keys take regex values, which match against the
-family/type names (using C<string_to_sock> and C<string_to_family>) and are
+C<family> and C<socktype> keys take regex values, which match against the
+family/socktype names (using C<string_to_sock> and C<string_to_family>) and are
 replaced with the integer values internally.
 
 Other keys treat the value as a string/regex to match against.
@@ -369,7 +376,7 @@ For example, the following parse a C<sockaddr_passive> specification which would
 match SOCK_STREAM sockets, for both AF_INET and AF_INET6 families, on all
 available interfaces.
 
-	family=INET,type=STREAM #Full key name
+	family=INET,socktype=STREAM #Full key name
 	f=INET,t=STREAM		#Shortest unique string for keys
 
 The special case of a field not in key value format (i.e. with out a '='), is
@@ -392,7 +399,7 @@ of [] and will need to be escaped or quoted in the shell
 
 =head2 socket
 
-	socket $socket, $domain_or_addr, $type, $proto
+	socket $socket, $domain_or_addr, $socktype, $proto
 
 
 	example:
@@ -532,7 +539,7 @@ local addresses:
 
 On interface en0,lo and unix, port 1000, path mypath.sock, and stream type only
 
-	perl examples/cli.pl -l interface='en0|lo|unix',port=1000,path=mypath.sock,type=stream
+	perl examples/cli.pl -l interface='en0|lo|unix',port=1000,path=mypath.sock,socktype=stream
 
 	Interface Address                   Family   Group              Port Path          Type        Data
 	en0       192.168.1.103             AF_INET  PRIVATE            1000               SOCK_STREAM

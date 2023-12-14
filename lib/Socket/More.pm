@@ -129,7 +129,11 @@ sub socket {
 
 	if(ref($_[1]) eq "HASH"){
 		#assume a 'interface object no need for remaining args
-		return CORE::socket $_[0], $_[1]{family}, $_[1]{type}, $_[1]{protocol};
+    
+    #v 0.5.0 rename type to socktype
+    $_[1]{socktype}=delete $_[1]{type} if exists $_[1]{type};
+    
+		return CORE::socket $_[0], $_[1]{family}, $_[1]{socktype}, $_[1]{protocol};
 	}
 	else {
 		#Assume a packed string
@@ -241,6 +245,10 @@ sub make_unix_interface {
 sub sockaddr_passive{
 	require Scalar::Util;
 	my ($spec)=@_;
+
+  # v0.5.0 renamed type to socktype
+  $spec->{socktype}=delete $spec->{type} if exists $spec->{type};
+
 	my $r={};
 
 	#If no interface provided assume all
@@ -252,7 +260,7 @@ sub sockaddr_passive{
         # }                                          #
         ##############################################
 
-	$r->{type}=$spec->{type}//[SOCK_STREAM, SOCK_DGRAM];
+	$r->{socktype}=$spec->{socktype}//[SOCK_STREAM, SOCK_DGRAM];
 	$r->{protocol}=$spec->{protocol}//0;
 
 	#If no family provided assume all
@@ -266,13 +274,13 @@ sub sockaddr_passive{
   #v0.4.0 adds string support for type and family
   
   # Convert to arrays for unified interface 
-  for($r->{type}, $r->{family}){
+  for($r->{socktype}, $r->{family}){
     unless(ref eq "ARRAY"){
       $_=[$_];
     }
   }
 
-  for($r->{type}->@*){
+  for($r->{socktype}->@*){
     unless(Scalar::Util::looks_like_number $_){
       ($_)=string_to_sock $_;
     }
@@ -334,6 +342,8 @@ sub sockaddr_passive{
 	my @new_spec_int;
 	my @new_fam;
 
+  # IF IPV4_ANY or IPV6_ANY is specified,  nuke any other address provided
+  #
 	if(grep /${\IPV4_ANY()}/, @$address){
 		push @new_spec_int, IPV4_ANY;
 		push @new_address, IPV4_ANY;
@@ -363,11 +373,14 @@ sub sockaddr_passive{
     push @new_interfaces, ({name=>IPV6_ANY, addr=>$results[0]{addr}});
 	}
 
+  # TODO: Also add special case for multicast interfaces? for datagrams?
+
 	if(@new_address){
 		@$address=@new_address;
 		@interfaces=@new_interfaces;
 		$r->{interface}=[".*"];
 	}
+
 	#$r->{family}=[@new_fam];
 
 	#Handle localhost
@@ -375,6 +388,11 @@ sub sockaddr_passive{
 		@$address=('^127.0.0.1$','^::1$');
 		$r->{interface}=[".*"];
 	}
+
+  
+
+  $r->{address}=$address;
+
 	#Generate combinations
 	my $result=Data::Combination::combinations $r;
 	
@@ -391,7 +409,6 @@ sub sockaddr_passive{
 		my $interface=$_;
 		scalar grep {$interface->{name} =~ $_->{interface}} @results
 	} @interfaces;
-
 
 	#Validate Family and fill out port and path
   no warnings "uninitialized";
@@ -418,7 +435,6 @@ sub sockaddr_passive{
 
 			next;
 	CLONE:
-
 		
 			my %clone=$_->%*;			
 			my $clone=\%clone;
@@ -431,37 +447,50 @@ sub sockaddr_passive{
 
 			#Port or path needs to be set
 			if($fam == AF_INET){
-				my (undef, $ip)=unpack_sockaddr_in($interface->{addr});
+        if(!exists $_->{address} or $_->{address} eq ".*"){
+          my (undef, $ip)=unpack_sockaddr_in($interface->{addr});
 
-        # Get the hostname/ip address as human readable string aka inet_ntop($fam, $ip);
-        Socket::More::Lookup::getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
+          # Get the hostname/ip address as human readable string aka inet_ntop($fam, $ip);
+          Socket::More::Lookup::getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
 
-				$clone->{address}=$host;
-
-        # Pack with desired port
-				$clone->{addr}=pack_sockaddr_in($_->{port},$ip);
-
-				#$interface->{port}=$_->{port};
+          # Pack with desired port
+          $clone->{address}=$host;
+          $clone->{addr}=pack_sockaddr_in($_->{port}, $ip);
+        }
+        else {
+          my @results;
+          Socket::More::Lookup::getaddrinfo($_->{address},$_->{port},{flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET,socktype=>$_->{socktype},protocol=>$_->{protocol}}, @results);
+          $clone->{addr}=$results[0]{addr};
+        }
 				$clone->{interface}=$interface->{name};
+        $clone->{if}=$interface;  # From v0.5.0
+
         if($enable_group){
           require Socket::More::IPRanges;
           $clone->{group}=Socket::More::IPRanges::ipv4_group($clone->{address});
         }
 			}
 			elsif($fam == AF_INET6){
-				my(undef, $ip, $scope, $flow_info)=unpack_sockaddr_in6($interface->{addr});
-        Socket::More::Lookup::getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
-				$clone->{address}=$host;#inet_ntop($fam, $ip);
+        if(!exists $_->{address} or $_->{address} eq ".*"){
+          my(undef, $ip, $scope, $flow_info)=unpack_sockaddr_in6($interface->{addr});
+          Socket::More::Lookup::getnameinfo($interface->{addr}, my $host="", my $port="", NI_NUMERICHOST|NI_NUMERICSERV);
+          $clone->{address}=$host;
+          $clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope, $flow_info);
+        }
+        else {
+          my @results;
+          Socket::More::Lookup::getaddrinfo($_->{address},$_->{port},{flags=>NI_NUMERICHOST|NI_NUMERICSERV, family=>AF_INET6,socktype=>$_->{socktype},protocol=>$_->{protocol}}, @results);
+          $clone->{addr}=$results[0]{addr};
+        }
 
-				$clone->{addr}=pack_sockaddr_in6($_->{port},$ip, $scope, $flow_info);
 				$clone->{interface}=$interface->{name};
         if($enable_group){
           require Socket::More::IPRanges;
           $clone->{group}=Socket::More::IPRanges::ipv6_group($clone->{address});
-      }
+        }
 			}
 			elsif($fam == AF_UNIX){
-				my $suffix=$_->{type}==SOCK_STREAM?"_S":"_D";
+				my $suffix=$_->{socktype}==SOCK_STREAM?"_S":"_D";
 
 				$clone->{addr}=pack_sockaddr_un $_->{path}.$suffix;
 				my $path=unpack_sockaddr_un($clone->{addr});			
@@ -495,16 +524,20 @@ sub sockaddr_passive{
   push @list, $output[0] if @output;
   for(my $i=1; $i<@output; $i++){
           my $out=$output[$i];
-          my $found=grep {cmp_data($_, $out)} @list; 
+          my $found=grep {!cmp_data($_, $out)} @list; 
           push @list, $out unless $found;
   }
+
 
 	
         #@output=@list;
   #@output=siikeysort {$_->{interface}, $_->{family}, $_->{type}} @output;
   @output=sort {
-    $a->{interface} cmp $b->{interface} || $a->{family} cmp $b->{family}|| $a->{type} cmp $b->{type}
-  } @list;
+    $a->{interface} cmp $b->{interface} || $a->{family} cmp $b->{family}|| $a->{socktype} cmp $b->{socktype}
+  } 
+    #v0.5.0 renamed type to socktype, alias back for compatibility
+    map {$_->{type}=$_->{socktype};$_} @list;
+  
 }
 
 #Parser for CLI  -l options
@@ -580,8 +613,13 @@ sub parse_passive_spec {
 				#Convert string to integer
 				@val=string_to_family($value);
 			}
+			elsif($key eq "socktype"){
+				#Convert string to integer
+				@val=string_to_sock($value);
+			}
 			elsif($key eq "type"){
 				#Convert string to integer
+        $key="socktype";      #v0.5.0 type was renamed to socktype.
 				@val=string_to_sock($value);
 			}
 			else{
@@ -608,19 +646,24 @@ sub string_to_family {
 	@name_2_af{@found}; 
 }
 
-sub sock_to_string { $sock_2_name[$_[0]]; }
+sub socktype_to_string { $sock_2_name[$_[0]]; }
+# v0.5.0 renamed. Alias to old name
+*sock_to_string=\*socktype_to_string;
 
 
-sub string_to_sock { 
+sub string_to_socktype { 
 	my ($string)=@_;
 	my @found=grep { /$string/i} sort keys %name_2_sock;
 	@name_2_sock{@found};
 }
+# v0.5.0 renamed. Alias to old name
+*string_to_sock=\*string_to_socktype;
+
 
 sub has_IPv4_interface {
 	my $spec={
 		family=>AF_INET,
-		type=>SOCK_STREAM,
+		socktype=>SOCK_STREAM,
 		port=>0
 	};
 	my @results=sockaddr_passive $spec;
@@ -632,7 +675,7 @@ sub has_IPv4_interface {
 sub has_IPv6_interface{
 	my $spec={
 		family=>AF_INET6,
-		type=>SOCK_STREAM,
+		socktype=>SOCK_STREAM,
 		port=>0
 	};
 	my @results=sockaddr_passive $spec;
@@ -655,9 +698,9 @@ sub _reify_ports {
         }
         else{
           #attempt a bind 
-          die "Could not create socket to reify port" unless CORE::socket(my $sock, $_->{family}, $_->{type}, 0);
-          die "Could not set reuse address flag" unless setsockopt $sock, SOL_SOCKET,SO_REUSEADDR,1;
-          die "Could not bind socket to reify port" unless bind($sock, $_->{addr});
+          die "Could not create socket to reify port $!" unless CORE::socket(my $sock, $_->{family}, $_->{socktype}, 0);
+          die "Could not set reuse address flag $!" unless setsockopt $sock, SOL_SOCKET,SO_REUSEADDR,1;
+          die "Could not bind socket to reify port $!" unless bind($sock, $_->{addr});
           my $name=getsockname $sock;
 
           #my ($err, $a, $port)=getnameinfo($name, NI_NUMERICHOST);
@@ -670,13 +713,9 @@ sub _reify_ports {
           close $sock;
         }
       }
-
       $_;
     }
-
-
     sockaddr_passive @_;
-
 }
 
 sub reify_ports {

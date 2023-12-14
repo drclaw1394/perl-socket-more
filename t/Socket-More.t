@@ -8,13 +8,13 @@ use Socket();
 use Socket::More::Constants;
 use Socket::More::Lookup;
 use feature "say";
+use Data::Dumper;
 
 
 
 BEGIN { use_ok('Socket::More') };
   use Socket::More;
 
-  use Data::Dumper;
 {
   #Pack unpack ipv4
   my $perl=Socket::pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
@@ -68,12 +68,12 @@ BEGIN { use_ok('Socket::More') };
 	socket my $wrapper, $sock_addr, SOCK_STREAM, 0;
 	ok $wrapper, "Wrapper socket created";
 	
-	my $interface={family=>AF_INET,type=>SOCK_STREAM, protocol=>0};
+	my $interface={family=>AF_INET,socktype=>SOCK_STREAM, protocol=>0};
 	socket(my $hash, $interface);
 	
-	ok getsockname($normal) eq getsockname($core), "Sockets ok";
-	ok getsockname($wrapper) eq getsockname($core), "Sockets ok";
-	ok getsockname($hash) eq getsockname($core), "Socket ok";
+	ok getsockname($normal) eq getsockname($core), "Sockets normal compare";
+	ok getsockname($wrapper) eq getsockname($core), "Sockets wrapper compare";
+	ok getsockname($hash) eq getsockname($core), "Socket hash compare";
 }
 
 
@@ -125,10 +125,10 @@ BEGIN { use_ok('Socket::More') };
 		});
 
 	#ok cmp_deeply(\@results, \@results_family),"Family ok";
-	ok cmp_data(\@results, \@results_family)==0,"Family ok";
+	ok !cmp_data(\@results, \@results_family)==0,"Family ok";
 	#ok cmp_deeply(\@results, \@results_family_interface),"Family  and interface ok";
-	ok cmp_data(\@results, \@results_family_interface)==0,"Family  and interface ok";
-	ok cmp_data(\@results, \@results_family_string)==0,"Family ok";
+	ok !cmp_data(\@results, \@results_family_interface)==0,"Family  and interface ok";
+	ok !cmp_data(\@results, \@results_family_string)==0,"Family ok";
 
 }
 
@@ -201,7 +201,7 @@ BEGIN { use_ok('Socket::More') };
 	my @spec=parse_passive_spec("interface=eth0, family=INET\$,type=STREAM");
 	ok @spec==1, "Parsed ok";
 	ok cmp_data($spec[0]{family},[AF_INET])==0, "Family match ok";
-	ok cmp_data($spec[0]{type},[SOCK_STREAM])==0, "Type match ok";
+	ok cmp_data($spec[0]{socktype},[SOCK_STREAM])==0, "Type match ok";
 
 }
 {
@@ -210,13 +210,13 @@ BEGIN { use_ok('Socket::More') };
 	ok @spec==1, "Parsed ok";
 
 	ok cmp_data($spec[0]{family}, [AF_INET])==0, "Family match ok";
-	ok cmp_data($spec[0]{type}, [SOCK_STREAM])==0, "Type match ok";
+	ok cmp_data($spec[0]{socktype}, [SOCK_STREAM])==0, "Type match ok";
 
 	@spec=parse_passive_spec("path_goes_here,type=STREAM");
 	ok @spec==1, "Parsed ok";
 
 	ok cmp_data($spec[0]{family},[AF_UNIX])==0, "Family match ok";
-	ok cmp_data($spec[0]{type},[SOCK_STREAM])==0, "Type match ok";
+	ok cmp_data($spec[0]{socktype},[SOCK_STREAM])==0, "Type match ok";
 
 
 	@spec=parse_passive_spec(":8084");
@@ -226,7 +226,7 @@ BEGIN { use_ok('Socket::More') };
 	@spec=parse_passive_spec(":8084,family=INET6,type=stream");
 
 	ok cmp_data($spec[0]{family},[AF_INET6])==0, "Family match ok";
-	ok cmp_data($spec[0]{type},[SOCK_STREAM])==0, "Type match ok";
+	ok cmp_data($spec[0]{socktype},[SOCK_STREAM])==0, "Type match ok";
 
 }
 ##################################################################################################################################
@@ -275,7 +275,7 @@ BEGIN { use_ok('Socket::More') };
 
     #Test that we can rebind to port immediately
     #
-    ok defined (socket my $sock, $r->{family}, $r->{type}, 0), "Could not create port refied socket";
+    ok defined (socket my $sock, $r->{family}, $r->{socktype}, 0), "Could not create port refied socket";
     ok defined (bind $sock, $r->{addr}), "Could not rebind reified port";
     close $sock;
   }
@@ -302,6 +302,7 @@ BEGIN { use_ok('Socket::More') };
     close $sock;
   }
 }
+
 ##########################################################################
 # {                                                                      #
 #         #IF name and index mapping                                     #

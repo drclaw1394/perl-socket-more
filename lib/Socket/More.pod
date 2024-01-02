@@ -400,14 +400,14 @@ of [] and will need to be escaped or quoted in the shell
 
 =head2 socket
 
-	socket $socket, $domain_or_addr, $socktype, $proto
+	socket $socket, $domain, $socktype, $proto
+  socket $socket, $hash
 
 
 	example:
 		die "$!" unless socket my $socket, AF_INET, SOCK_STREAM,0;
 
-		
-		die "$!" unless socket my $socket, $sockaddr, SOCK_STREAM,0;
+		die "$!" unless socket my $socket, {family=>AF_INET, protocol=>0, socktype=>SOCK_STREAM};
 
 A wrapper around C<CORE::socket>.  It checks if the C<DOMAIN> is a number.  If
 so, it simply calls C<CORE::socket> with the supplied arguments.

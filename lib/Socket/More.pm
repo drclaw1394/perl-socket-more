@@ -65,8 +65,11 @@ use Export::These qw<
 	family_to_string
 	string_to_family
 
-	sock_to_string
-	string_to_sock
+	socktype_to_string
+  sock_to_string
+
+	string_to_socktype
+  string_to_sock
 
 	unpack_sockaddr
 
@@ -98,10 +101,10 @@ sub _reexport {
   Socket::More::Interface->import;
 }
 
-our $VERSION = 'v0.5.0';
+our $VERSION = 'v0.5.1';
 
 sub string_to_family;
-sub string_to_sock;
+sub string_to_socktype;
 
 
 use constant::more PACK_FAMILY=>do {
@@ -123,23 +126,17 @@ sub sockaddr_family {
 
 
 sub socket {
-	require Scalar::Util;
-	#qw<looks_like_number>;
-	return &CORE::socket if Scalar::Util::looks_like_number $_[1];
 
 	if(ref($_[1]) eq "HASH"){
 		#assume a 'interface object no need for remaining args
     
     #v 0.5.0 rename type to socktype
     $_[1]{socktype}=delete $_[1]{type} if exists $_[1]{type};
-    
 		return CORE::socket $_[0], $_[1]{family}, $_[1]{socktype}, $_[1]{protocol};
 	}
-	else {
-		#Assume a packed string
-		my $domain=sockaddr_family($_[1]);
-		return CORE::socket $_[0], $domain, $_[2], $_[3];
-	}
+  else{
+    return &CORE::socket;
+  }
 }
 
 
@@ -241,7 +238,9 @@ sub make_unix_interface {
 }
 
 
-#main routine to return passive address structures
+# Main routine to return passive address structures for binding or adding to
+# multicast group
+#
 sub sockaddr_passive{
 	require Scalar::Util;
 	my ($spec)=@_;
@@ -282,7 +281,7 @@ sub sockaddr_passive{
 
   for($r->{socktype}->@*){
     unless(Scalar::Util::looks_like_number $_){
-      ($_)=string_to_sock $_;
+      ($_)=string_to_socktype $_;
     }
   }
 
@@ -442,7 +441,7 @@ sub sockaddr_passive{
 
 			#A this point we have a valid family  and port/path combo
 			#
-			my ($err,$res, $service);
+			my ($err, $res, $service);
 
 
 			#Port or path needs to be set
@@ -511,6 +510,7 @@ sub sockaddr_passive{
       if($enable_group){
         next  unless grep {$clone->{group}=~ /$_/i } @$group;
       }
+      next unless defined $clone->{addr};
 
 			#copy data to clone
 			$clone->{data}=$data;
@@ -615,12 +615,12 @@ sub parse_passive_spec {
 			}
 			elsif($key eq "socktype"){
 				#Convert string to integer
-				@val=string_to_sock($value);
+				@val=string_to_socktype($value);
 			}
 			elsif($key eq "type"){
 				#Convert string to integer
         $key="socktype";      #v0.5.0 type was renamed to socktype.
-				@val=string_to_sock($value);
+				@val=string_to_socktype($value);
 			}
 			else{
 				@val=($value);

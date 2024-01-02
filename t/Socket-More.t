@@ -65,14 +65,14 @@ BEGIN { use_ok('Socket::More') };
 	CORE::socket my $core, AF_INET, SOCK_STREAM, 0;
 	ok $core, "Core socket created";
 
-	socket my $wrapper, $sock_addr, SOCK_STREAM, 0;
-	ok $wrapper, "Wrapper socket created";
+  #socket my $wrapper, $sock_addr, SOCK_STREAM, 0;
+  #ok $wrapper, "Wrapper socket created";
 	
 	my $interface={family=>AF_INET,socktype=>SOCK_STREAM, protocol=>0};
 	socket(my $hash, $interface);
 	
 	ok getsockname($normal) eq getsockname($core), "Sockets normal compare";
-	ok getsockname($wrapper) eq getsockname($core), "Sockets wrapper compare";
+  #ok getsockname($wrapper) eq getsockname($core), "Sockets wrapper compare";
 	ok getsockname($hash) eq getsockname($core), "Socket hash compare";
 }
 

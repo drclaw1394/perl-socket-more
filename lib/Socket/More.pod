@@ -1,6 +1,6 @@
 =head1 NAME
 
-Socket::More - Lite, Easy Listening for your (multiple) sockets
+Socket::More - Scoped listening/passive addresses and network utility routines
 
 =head1 SYNOPSIS
 
@@ -35,8 +35,8 @@ Please see EXAMPLES section for more.
 =head1 DESCRIPTION
 
 Intended as an alternative for L<Socket>, implementing only 'modern subset' of
-routines. It providing extra routines to make listening addresses easy, to solve
-problems like this:
+routines. It providing extra routines to make listening addresses easy, to
+solve problems like this:
 
 	'listen on interfaces eth0 and eth1, using IPv6 and port numbers 9090
 	and 9091, but limit to link local addresses, and stream types'.
@@ -68,8 +68,7 @@ CPAN for targeted usage:
 
 =item wrapper over C<socket> to make it more flexible
 
-=item 
-Methods for creating address structure for listening (passive)
+=item Methods for creating address structure for listening (passive)
 sockets using a query and consise command line syntax 
 
 =item String/constant mapping
@@ -97,6 +96,22 @@ C<sysread> convention
 
 Implements and exports C<getifaddrs>, C<if_nametoindex>, C<if_indextoname> and
 C<if_nameindex> to query the interfaces of your system
+
+=back
+
+
+Other packages/distributions not reexported but part of the family:
+
+=over 
+
+=item L<Socket::More::Resolver>
+
+
+Non blocking and event loop integration of system resolver functions.
+
+=item L<Socket::More::IPRanges>
+
+Grouping information on IP addresses
 
 =back
 

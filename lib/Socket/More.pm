@@ -2,7 +2,8 @@ package Socket::More;
 
 use 5.036000;
 
-use Import::These qw<Socket::More:: Constants Lookup Interface>;
+use Import::These qw<Socket::More:: Constants Interface>;
+use Socket::More::Lookup ();
 
 use Data::Cmp qw<cmp_data>;
 use Data::Combination;
@@ -101,7 +102,7 @@ sub _reexport {
   Socket::More::Interface->import;
 }
 
-our $VERSION = 'v0.5.1';
+our $VERSION = 'v0.5.0';
 
 sub string_to_family;
 sub string_to_socktype;

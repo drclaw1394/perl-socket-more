@@ -1,6 +1,6 @@
 # NAME
 
-Socket::More - Lite, Easy Listening for your (multiple) sockets
+Socket::More - Scoped listening/passive addresses and network utility routines
 
 # SYNOPSIS
 
@@ -39,8 +39,8 @@ Please see EXAMPLES section for more.
 # DESCRIPTION
 
 Intended as an alternative for [Socket](https://metacpan.org/pod/Socket), implementing only 'modern subset' of
-routines. It providing extra routines to make listening addresses easy, to solve
-problems like this:
+routines. It providing extra routines to make listening addresses easy, to
+solve problems like this:
 
 ```
     'listen on interfaces eth0 and eth1, using IPv6 and port numbers 9090
@@ -67,8 +67,7 @@ CPAN for targeted usage:
 
 - [Socket::More](https://metacpan.org/pod/Socket%3A%3AMore) (This Module)
     - wrapper over `socket` to make it more flexible
-    - 
-    Methods for creating address structure for listening (passive)
+    - Methods for creating address structure for listening (passive)
     sockets using a query and consise command line syntax 
     - String/constant mapping
     - General pack/unpack of address structures
@@ -89,6 +88,16 @@ CPAN for targeted usage:
 
     Implements and exports `getifaddrs`, `if_nametoindex`, `if_indextoname` and
     `if_nameindex` to query the interfaces of your system
+
+Other packages/distributions not reexported but part of the family:
+
+- [Socket::More::Resolver](https://metacpan.org/pod/Socket%3A%3AMore%3A%3AResolver)
+
+    Non blocking and event loop integration of system resolver functions.
+
+- [Socket::More::IPRanges](https://metacpan.org/pod/Socket%3A%3AMore%3A%3AIPRanges)
+
+    Grouping information on IP addresses
 
 # MOTIVATION
 
@@ -416,14 +425,14 @@ of \[\] and will need to be escaped or quoted in the shell
 ## socket
 
 ```perl
-    socket $socket, $domain_or_addr, $socktype, $proto
+      socket $socket, $domain, $socktype, $proto
+socket $socket, $hash
 
 
-    example:
-            die "$!" unless socket my $socket, AF_INET, SOCK_STREAM,0;
+      example:
+              die "$!" unless socket my $socket, AF_INET, SOCK_STREAM,0;
 
-            
-            die "$!" unless socket my $socket, $sockaddr, SOCK_STREAM,0;
+              die "$!" unless socket my $socket, {family=>AF_INET, protocol=>0, socktype=>SOCK_STREAM};
 ```
 
 A wrapper around `CORE::socket`.  It checks if the `DOMAIN` is a number.  If

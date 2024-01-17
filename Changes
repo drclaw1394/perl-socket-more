@@ -1,38 +1,31 @@
 Revision history for Perl extension Socket::More.
-v0.5.0  2023-09-30
+v0.5.0  2024-01-18
   [features]
     - Refactored into multiple sub modules for CPAN
       - Socket::More::Lookup => getaddrinfo/getnameinfo
       - Socket::More::Resolver => Asynchronous event/nonblocking system resolver
       - Socket::More::Constants => supported constants for your system
-      - Socket::More::Interface => getifaddrs et all
+      - Socket::More::Interface => getifaddrs et al.
       - Socket::More::IPRanges => IPv4 and IPv6 address classifications/grouping 
-    - interface information is returned in 'if' element
-    - Support for Multicast groups. 
-    - TODO Update POD
-    - TODO fix  address results on  wildcard address
-    - TODO fix unix path parsing?
-    - TODO document MULTICAST usage
-
+    - interface information is returned in 'if' element sockaddr_passive
+    - Support for Multicast groups in sockaddr_passive
     - Removed runtime dependency on Socket
-
     - Implemented pack/unpack_sockaddr_un/in/in6 and sockaddr_family
         
-    - Updated pod with new functions
-      - calling convention is different to socket
     
 
-    [bug fix]
+    [bug fixes]
     - addressed a potential issue where duplicate results could be returned from sockaddr_passive
 
     [improvements]
       - reduced memory overhead by not requiring Socket at runtime
-      - reduced memory overhead by only processing IP ranges/groups when asked
-        for in sockaddr_passive specification
+      - reduced memory overhead by only processing IP ranges/groups when
+        asked for in sockaddr_passive specification
       - renamed sock_to_string  as socktype_to string (original aliased)
       - renamed string_to_sock as string_to_socktype (original aliased)
       - renamed 'type' field in passive spec to 'socktype' for better
-        consistency. Backward compatible. The old 'type' field will is depreciated.
+        consistency. Backward compatible. The old 'type' field is
+        depreciated.
 
 
 

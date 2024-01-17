@@ -9,5 +9,5 @@ MANIFEST			This list of files
 MANIFEST.SKIP
 README
 README.md
+t/02-multicast.t
 t/Socket-More.t
-temp.pl

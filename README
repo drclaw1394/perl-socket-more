@@ -1,5 +1,6 @@
 NAME
-    Socket::More - Lite, Easy Listening for your (multiple) sockets
+    Socket::More - Scoped listening/passive addresses and network utility
+    routines
 
 SYNOPSIS
     Bring into your namespace.
@@ -60,7 +61,7 @@ DESCRIPTION
     Socket::More (This Module)
 
         wrapper over "socket" to make it more flexible
-         Methods for creating address structure for listening (passive)
+        Methods for creating address structure for listening (passive)
         sockets using a query and consise command line syntax
         String/constant mapping
         General pack/unpack of address structures
@@ -80,6 +81,15 @@ DESCRIPTION
         Implements and exports "getifaddrs", "if_nametoindex",
         "if_indextoname" and "if_nameindex" to query the interfaces of your
         system
+
+    Other packages/distributions not reexported but part of the family:
+
+    Socket::More::Resolver
+        Non blocking and event loop integration of system resolver
+        functions.
+
+    Socket::More::IPRanges
+        Grouping information on IP addresses
 
 MOTIVATION
     I wanted an easy way to listen on a particular interface ONLY. The
@@ -348,14 +358,14 @@ API
     a pair of [] and will need to be escaped or quoted in the shell
 
   socket
-            socket $socket, $domain_or_addr, $socktype, $proto
+            socket $socket, $domain, $socktype, $proto
+      socket $socket, $hash
 
 
             example:
                     die "$!" unless socket my $socket, AF_INET, SOCK_STREAM,0;
 
-                
-                    die "$!" unless socket my $socket, $sockaddr, SOCK_STREAM,0;
+                    die "$!" unless socket my $socket, {family=>AF_INET, protocol=>0, socktype=>SOCK_STREAM};
 
     A wrapper around "CORE::socket". It checks if the "DOMAIN" is a number.
     If so, it simply calls "CORE::socket" with the supplied arguments.

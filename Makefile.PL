@@ -8,10 +8,10 @@ WriteMakefile(
 		'Net::IP::Lite'=>0,
     
     'Socket::More::Lookup'=>0,
-    'Socket::More::Constants'=>0,
+    'Socket::More::Constants'=>"v0.1.1",
     'Socket::More::Interface'=>0,
-    "Export::These"=>0,
-    "Import::These"=>0,
+    "Export::These"=>"v0.2.1",
+    "Import::These"=>"v0.1.2",
     "constant::more"=>"v0.3.0",
 		'Data::Combination'=>0,
 

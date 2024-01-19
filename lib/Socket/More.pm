@@ -113,10 +113,10 @@ use constant::more PACK_FAMILY=>do {
     "xC";
   }
   elsif($^O =~ /linux/i) {
-      "s";
+      "S";
   }
   elsif($^O =~ /bsd/i){
-	  "xC";
+	  "S";
   }
   else {
       "s";

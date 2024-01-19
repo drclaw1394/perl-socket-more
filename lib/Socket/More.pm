@@ -102,18 +102,21 @@ sub _reexport {
   Socket::More::Interface->import;
 }
 
-our $VERSION = 'v0.5.0';
+our $VERSION = 'v0.5.1';
 
 sub string_to_family;
 sub string_to_socktype;
 
 
 use constant::more PACK_FAMILY=>do {
-  if($^O =~ /darwin/){
+  if($^O =~ /darwin/i){
     "xC";
   }
-  elsif($^O =~ /linux/) {
+  elsif($^O =~ /linux/i) {
       "s";
+  }
+  elsif($^O =~ /bsd/i){
+	  "xC";
   }
   else {
       "s";
@@ -146,11 +149,14 @@ sub socket {
 #=======================
 #
 use constant::more PACK_SOCKADDR_UN=>do {
-  if($^O =~ /darwin/){
+  if($^O =~ /darwin/i){
       "xCA*";
   }
-  elsif($^O =~ /linux/) {
-      "sA*";
+  elsif($^O =~ /linux/i) {
+      "SA*";
+  }
+  elsif($^O =~ /bsd/i){
+      "xSA*";
   }
   else {
       "sA*";
@@ -166,11 +172,14 @@ sub pack_sockaddr_un {
 }
 
 use constant::more PACK_SOCKADDR_IN=>do {
-  if($^O =~ /darwin/){
+  if($^O =~ /darwin/i){
       "xCna4x8";
   }
   elsif($^O =~ /linux/) {
-      "sna4x8";
+      "Sna4x8";
+  }
+  elsif($^O =~ /bsd/i){
+      "xCna4x8";
   }
   else {
       "sna4x8";
@@ -189,7 +198,7 @@ sub unpack_sockaddr_in {
 
 
 use constant::more PACK_SOCKADDR_IN6=>do {
-  if($^O =~ /darwin/){
+  if($^O =~ /darwin|bsd/i){
    "xCnNa16N"
   }
   elsif($^O =~ /linux/) {
@@ -339,13 +348,13 @@ sub sockaddr_passive{
 	#Check for special cases here and adjust accordingly
 	my @new_address;
 	my @new_interfaces;
-	my @new_spec_int;
+	##my @new_spec_int;
 	my @new_fam;
 
   # IF IPV4_ANY or IPV6_ANY is specified,  nuke any other address provided
   #
 	if(grep /${\IPV4_ANY()}/, @$address){
-		push @new_spec_int, IPV4_ANY;
+		#push @new_spec_int, IPV4_ANY;
 		push @new_address, IPV4_ANY;
 		push @new_fam, AF_INET;
     my @results;
@@ -356,11 +365,12 @@ sub sockaddr_passive{
       @results
     );
 
+
 		push @new_interfaces, ({name=>IPV4_ANY,addr=>$results[0]{addr}});
 	}
 
 	if(grep /${\IPV6_ANY()}/, @$address){
-		push @new_spec_int, IPV6_ANY;
+		#push @new_spec_int, IPV6_ANY;
 		push @new_address, IPV6_ANY;
     push @new_fam, AF_INET6;
     my @results;
@@ -372,6 +382,7 @@ sub sockaddr_passive{
     );
     push @new_interfaces, ({name=>IPV6_ANY, addr=>$results[0]{addr}});
 	}
+
 
   # TODO: Also add special case for multicast interfaces? for datagrams?
 

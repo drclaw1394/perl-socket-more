@@ -9,6 +9,7 @@ use Socket::More::Constants;
 use Socket::More::Lookup;
 use feature "say";
 use Data::Dumper;
+$Data::Dumper::Sortkeys=1;
 
 
 
@@ -19,9 +20,6 @@ BEGIN { use_ok('Socket::More') };
   #Pack unpack ipv4
   my $perl=Socket::pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
   my $sm=pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
-  #say STDERR "";
-  #say STDERR unpack "H*", $perl;
-  #say STDERR unpack "H*", $sm;
   ok substr($perl, 1) eq substr($sm,1);
   
   my($pport,$paddr)=Socket::unpack_sockaddr_in($perl);
@@ -124,11 +122,9 @@ BEGIN { use_ok('Socket::More') };
 			port=>[0,10,12]
 		});
 
-	#ok cmp_deeply(\@results, \@results_family),"Family ok";
-	ok !cmp_data(\@results, \@results_family)==0,"Family ok";
-	#ok cmp_deeply(\@results, \@results_family_interface),"Family  and interface ok";
-	ok !cmp_data(\@results, \@results_family_interface)==0,"Family  and interface ok";
-	ok !cmp_data(\@results, \@results_family_string)==0,"Family ok";
+	ok (!cmp_data(\@results, \@results_family)==1,"Family ok");
+	ok (!cmp_data(\@results, \@results_family_interface)==1,"Family  and interface ok");
+	ok (!cmp_data(\@results, \@results_family_string)==1,"Family string ok");
 
 }
 
@@ -252,6 +248,8 @@ BEGIN { use_ok('Socket::More') };
 	#any/unspecified
 	#Loopback
 	my @results=Socket::More::sockaddr_passive( {address=>"0.0.0.0", port=>0, family=>AF_INET, type=>SOCK_DGRAM});
+
+	
 	ok @results==1, "ipv4 wildcard";
 	ok $results[0]{address} eq "0.0.0.0", "ipv4 wildcard";
 

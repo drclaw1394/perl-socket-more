@@ -20,13 +20,14 @@ BEGIN { use_ok('Socket::More') };
   #Pack unpack ipv4
   my $perl=Socket::pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
   my $sm=pack_sockaddr_in(1234, pack "C4", 0,0,0,1);
+
   ok substr($perl, 1) eq substr($sm,1);
   
   my($pport,$paddr)=Socket::unpack_sockaddr_in($perl);
   my($smport,$smaddr)=unpack_sockaddr_in($sm);
 
-  ok $pport eq $smport;
-  ok $paddr eq $smaddr;
+  ok $pport eq $smport, "pack_sockaddr_in port";
+  ok $paddr eq $smaddr, "pack_sockaddr_in addr";
 }
 {
   #Pack unpack ipv6
@@ -37,8 +38,25 @@ BEGIN { use_ok('Socket::More') };
   my($pport,$paddr)=Socket::unpack_sockaddr_in6($perl);
   my($smport,$smaddr)=unpack_sockaddr_in6($sm);
 
-  ok $pport eq $smport;
-  ok $paddr eq $smaddr;
+  ok $pport eq $smport, "pack_sockaddr_in6 port";
+  ok $paddr eq $smaddr,	"pack_sockaddr_in6 addr";
+}
+{
+  # Pack unpack unix
+  my $perl=Socket::pack_sockaddr_un("test");
+  
+  my $sm=pack_sockaddr_un("test");
+  say STDERR "length: ", length $perl;
+  say STDERR "perl: ", unpack "H*", $perl;
+  say STDERR "sm: ", unpack "H*", $sm;
+  ok substr($perl, 1) eq substr($sm,1);
+  
+  my($pname)=Socket::unpack_sockaddr_un($perl);
+  my($sname)=unpack_sockaddr_un($sm);
+  say STDERR "perl: ", $pname;
+  say STDERR "sm: ", $sname;
+
+  ok $pname eq $sname, "pack_sockaddr_un port";
 }
 {
   # Sock  family
@@ -47,6 +65,7 @@ BEGIN { use_ok('Socket::More') };
 
   my $p=Socket::sockaddr_family($in4);
   my $sm=sockaddr_family($in4);
+  
 
 }
 

@@ -150,13 +150,18 @@ sub socket {
 #
 use constant::more PACK_SOCKADDR_UN=>do {
   if($^O =~ /darwin/i){
-      "xCA*";
+      # (macos) SUN_LEN => 104
+      "CCZ[104]";
   }
   elsif($^O =~ /linux/i) {
-      "SA*";
+      # (linux) SUN_LEN => 108
+      "xXSZ[108]";
   }
   elsif($^O =~ /bsd/i){
-      "xSA*";
+
+	# (BSD) SUNPATHLEN => 104
+	#
+      "CCZ[104]";
   }
   else {
       "sA*";
@@ -164,11 +169,13 @@ use constant::more PACK_SOCKADDR_UN=>do {
 };
 
 sub unpack_sockaddr_un {
-  unpack PACK_SOCKADDR_UN, substr($_[0],2);
+  my ($size, $fam, $name)=unpack PACK_SOCKADDR_UN, $_[0];#substr($_[0],2);
+  say STDERR "Size $size, fam $fam, name $name";
+  $name;
 }
 
 sub pack_sockaddr_un {
-  pack PACK_SOCKADDR_UN, AF_UNIX, $_[0];
+  pack PACK_SOCKADDR_UN, 106, AF_UNIX, $_[0];
 }
 
 use constant::more PACK_SOCKADDR_IN=>do {

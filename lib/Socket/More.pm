@@ -107,24 +107,38 @@ our $VERSION = 'v0.5.1';
 sub string_to_family;
 sub string_to_socktype;
 
+use constant::more IS_DARWIN=> !!($^O =~ /darwin/i),
+                    IS_LINUX=> !!($^O =~ /linux/i),
+                    IS_BSD=>   !!($^O =~ /bsd/i);
 
-use constant::more PACK_FAMILY=>do {
-  if($^O =~ /darwin/i){
-    "xC";
-  }
-  elsif($^O =~ /linux/i) {
-      "S";
-  }
-  elsif($^O =~ /bsd/i){
-	  "S";
-  }
-  else {
-      "s";
-  }
-};
+########################################
+# use constant::more PACK_FAMILY=>do { #
+#   if($^O =~ /darwin/i){              #
+#     "xC";                            #
+#   }                                  #
+#   elsif($^O =~ /linux/i) {           #
+#       "S";                           #
+#   }                                  #
+#   elsif($^O =~ /bsd/i){              #
+#           "S";                       #
+#   }                                  #
+#   else {                             #
+#       "s";                           #
+#   }                                  #
+# };                                   #
+########################################
 
 sub sockaddr_family {
-  unpack PACK_FAMILY, $_[0];
+  #unpack PACK_FAMILY, $_[0];
+  if(IS_LINUX){
+    return unpack "S", $_[0];
+  }
+  if(IS_DARWIN){
+    return unpack "xC", $_[0];
+  }
+  if(IS_BSD){
+    return unpack "xC", $_[0];
+  }
 }
 
 
@@ -148,76 +162,123 @@ sub socket {
 #Network interface stuff
 #=======================
 #
-use constant::more PACK_SOCKADDR_UN=>do {
-  if($^O =~ /darwin/i){
-      # (macos) SUN_LEN => 104
-      "CCZ[104]";
-  }
-  elsif($^O =~ /linux/i) {
-      # (linux) SUN_LEN => 108
-      "xXSZ[108]";
-  }
-  elsif($^O =~ /bsd/i){
-
-	# (BSD) SUNPATHLEN => 104
-	#
-      "CCZ[104]";
-  }
-  else {
-      "sA*";
-  }
-};
+#############################################
+# use constant::more PACK_SOCKADDR_UN=>do { #
+#   if($^O =~ /darwin/i){                   #
+#       # (macos) SUN_LEN => 104            #
+#       "CCZ[104]";                         #
+#   }                                       #
+#   elsif($^O =~ /linux/i) {                #
+#       # (linux) SUN_LEN => 108            #
+#       "SZ[108]";                          #
+#   }                                       #
+#   elsif($^O =~ /bsd/i){                   #
+#                                           #
+#         # (BSD) SUNPATHLEN => 104         #
+#         #                                 #
+#       "CCZ[104]";                         #
+#   }                                       #
+#   else {                                  #
+#       "sA*";                              #
+#   }                                       #
+# };                                        #
+#############################################
 
 sub unpack_sockaddr_un {
-  my ($size, $fam, $name)=unpack PACK_SOCKADDR_UN, $_[0];#substr($_[0],2);
-  say STDERR "Size $size, fam $fam, name $name";
+  my ($size, $fam, $name);
+  if(IS_LINUX){
+    ($fam,$name)=unpack "SZ[108]", $_[0];
+  }
+  if(IS_DARWIN){
+
+    ($size,$fam,$name)=unpack "CCZ[104]", $_[0];
+  }
+  if(IS_BSD){
+    ($size,$fam,$name)=unpack "CCZ[104]", $_[0];
+  }
+
+  
+  #say STDERR "Size $size, fam $fam, name $name";
   $name;
 }
 
 sub pack_sockaddr_un {
-  pack PACK_SOCKADDR_UN, 106, AF_UNIX, $_[0];
+  #pack PACK_SOCKADDR_UN, 106, AF_UNIX, $_[0];
+  #PLATFORM eq pack PACK_SOCKADDR_UN, AF_UNIX, $_[0];
+  if(IS_LINUX){
+    return pack "SZ[108]", AF_UNIX, $_[0];
+  }
+  if(IS_DARWIN){
+    return pack "CCZ[104]", 106, AF_UNIX, $_[0];
+  }
+  if(IS_BSD){
+    return pack "CCZ[104]", 106, AF_UNIX, $_[0];
+  }
 }
 
-use constant::more PACK_SOCKADDR_IN=>do {
-  if($^O =~ /darwin/i){
-      "xCna4x8";
-  }
-  elsif($^O =~ /linux/) {
-      "Sna4x8";
-  }
-  elsif($^O =~ /bsd/i){
-      "xCna4x8";
-  }
-  else {
-      "sna4x8";
-  }
-};
+#############################################
+# use constant::more PACK_SOCKADDR_IN=>do { #
+#   if($^O =~ /darwin/i){                   #
+#       "xCna4x8";                          #
+#   }                                       #
+#   elsif($^O =~ /linux/) {                 #
+#       "Sna4x8";                           #
+#   }                                       #
+#   elsif($^O =~ /bsd/i){                   #
+#       "xCna4x8";                          #
+#   }                                       #
+#   else {                                  #
+#       "sna4x8";                           #
+#   }                                       #
+# };                                        #
+#############################################
 
 
 sub pack_sockaddr_in {
-  pack PACK_SOCKADDR_IN, AF_INET, $_[0], $_[1];
+  #pack PACK_SOCKADDR_IN, AF_INET, $_[0], $_[1];
+  if(IS_LINUX){
+    return pack "Sna4x8", AF_INET, $_[0], $_[1];
+  }
+  if(IS_DARWIN){
+    return pack "xCna4x8", AF_INET, $_[0], $_[1];
+  }
+  if(IS_BSD){
+    return pack "xCna4x8", AF_INET, $_[0], $_[1];
+  }
 }
 
 sub unpack_sockaddr_in {
-  my ($port, $addr)=unpack "na4", substr($_[0], 2);
-  ($port,$addr);
+  #my ($port, $addr)=
+  unpack "na4", substr($_[0], 2);
+  #($port,$addr);
 }
 
 
-use constant::more PACK_SOCKADDR_IN6=>do {
-  if($^O =~ /darwin|bsd/i){
-   "xCnNa16N"
-  }
-  elsif($^O =~ /linux/) {
-      "snNa16N";
-  }
-  else {
-      "snNa16N";
-  }
-};
+##############################################
+# use constant::more PACK_SOCKADDR_IN6=>do { #
+#   if($^O =~ /darwin|bsd/i){                #
+#    "xCnNa16N"                              #
+#   }                                        #
+#   elsif($^O =~ /linux/) {                  #
+#       "snNa16N";                           #
+#   }                                        #
+#   else {                                   #
+#       "snNa16N";                           #
+#   }                                        #
+# };                                         #
+##############################################
 
 sub pack_sockaddr_in6 {
-  pack PACK_SOCKADDR_IN6,  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+  #pack PACK_SOCKADDR_IN6,  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+  if(IS_LINUX){
+    return pack  "snNa16N",  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+  }
+  if(IS_DARWIN){
+    return pack  "xCnNa16N",  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+  }
+  if(IS_BSD){
+    return pack  "xCnNa16N",  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;
+  }
 }
 
 sub unpack_sockaddr_in6{

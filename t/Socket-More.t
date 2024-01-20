@@ -122,9 +122,15 @@ BEGIN { use_ok('Socket::More') };
 			port=>[0,10,12]
 		});
 
-	ok (!cmp_data(\@results, \@results_family)==1,"Family ok");
-	ok (!cmp_data(\@results, \@results_family_interface)==1,"Family  and interface ok");
-	ok (!cmp_data(\@results, \@results_family_string)==1,"Family string ok");
+  for(0..$#results){
+    #say STDERR Dumper $results[$_], $results_family[$_] if cmp_data($results[$_], $results_family[$_])!=0;
+    ok cmp_data($results[$_], $results_family[$_])==0, "Result match: implicit family";
+    ok cmp_data($results[$_], $results_family_interface[$_])==0, "Result match: explicity family";
+    ok cmp_data($results[$_], $results_family_string[$_])==0, "Result match: explicit family string";
+  }
+  #ok ((cmp_data(\@results, \@results_family)==0),"Family ok");
+  #ok (cmp_data(\@results, \@results_family_interface)==1,"Family  and interface ok");
+  #ok (cmp_data(\@results, \@results_family_string)==1,"Family string ok");
 
 }
 

@@ -2,9 +2,11 @@ Revision history for Perl extension Socket::More.
 v0.5.1  2024-01-20
   [fixes]
     - Address failing tests on FreeBSD.
-      - Fix un/pack_sockaddr_un with correct sizing of structure
+      - Fixed un/pack_sockaddr_un with correct sizing of structure.
 
+    - Made test script more reliable
     - Improved OS specific code
+
 
 v0.5.0  2024-01-18
   [features]

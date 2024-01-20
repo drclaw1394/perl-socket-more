@@ -107,29 +107,18 @@ our $VERSION = 'v0.5.1';
 sub string_to_family;
 sub string_to_socktype;
 
+# NOTE: These constants allow for perl to optimise away the false condition
+# tests per platform
 use constant::more IS_DARWIN=> !!($^O =~ /darwin/i),
                     IS_LINUX=> !!($^O =~ /linux/i),
                     IS_BSD=>   !!($^O =~ /bsd/i);
 
-########################################
-# use constant::more PACK_FAMILY=>do { #
-#   if($^O =~ /darwin/i){              #
-#     "xC";                            #
-#   }                                  #
-#   elsif($^O =~ /linux/i) {           #
-#       "S";                           #
-#   }                                  #
-#   elsif($^O =~ /bsd/i){              #
-#           "S";                       #
-#   }                                  #
-#   else {                             #
-#       "s";                           #
-#   }                                  #
-# };                                   #
-########################################
 
+#Network interface stuff
+#=======================
+#
+                    #
 sub sockaddr_family {
-  #unpack PACK_FAMILY, $_[0];
   if(IS_LINUX){
     return unpack "S", $_[0];
   }
@@ -159,30 +148,6 @@ sub socket {
 
 
 
-#Network interface stuff
-#=======================
-#
-#############################################
-# use constant::more PACK_SOCKADDR_UN=>do { #
-#   if($^O =~ /darwin/i){                   #
-#       # (macos) SUN_LEN => 104            #
-#       "CCZ[104]";                         #
-#   }                                       #
-#   elsif($^O =~ /linux/i) {                #
-#       # (linux) SUN_LEN => 108            #
-#       "SZ[108]";                          #
-#   }                                       #
-#   elsif($^O =~ /bsd/i){                   #
-#                                           #
-#         # (BSD) SUNPATHLEN => 104         #
-#         #                                 #
-#       "CCZ[104]";                         #
-#   }                                       #
-#   else {                                  #
-#       "sA*";                              #
-#   }                                       #
-# };                                        #
-#############################################
 
 sub unpack_sockaddr_un {
   my ($size, $fam, $name);
@@ -198,7 +163,6 @@ sub unpack_sockaddr_un {
   }
 
   
-  #say STDERR "Size $size, fam $fam, name $name";
   $name;
 }
 
@@ -216,22 +180,6 @@ sub pack_sockaddr_un {
   }
 }
 
-#############################################
-# use constant::more PACK_SOCKADDR_IN=>do { #
-#   if($^O =~ /darwin/i){                   #
-#       "xCna4x8";                          #
-#   }                                       #
-#   elsif($^O =~ /linux/) {                 #
-#       "Sna4x8";                           #
-#   }                                       #
-#   elsif($^O =~ /bsd/i){                   #
-#       "xCna4x8";                          #
-#   }                                       #
-#   else {                                  #
-#       "sna4x8";                           #
-#   }                                       #
-# };                                        #
-#############################################
 
 
 sub pack_sockaddr_in {
@@ -254,19 +202,6 @@ sub unpack_sockaddr_in {
 }
 
 
-##############################################
-# use constant::more PACK_SOCKADDR_IN6=>do { #
-#   if($^O =~ /darwin|bsd/i){                #
-#    "xCnNa16N"                              #
-#   }                                        #
-#   elsif($^O =~ /linux/) {                  #
-#       "snNa16N";                           #
-#   }                                        #
-#   else {                                   #
-#       "snNa16N";                           #
-#   }                                        #
-# };                                         #
-##############################################
 
 sub pack_sockaddr_in6 {
   #pack PACK_SOCKADDR_IN6,  AF_INET6, $_[0], $_[3]//0, $_[1], $_[2]//0;

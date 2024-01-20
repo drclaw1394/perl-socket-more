@@ -46,15 +46,10 @@ BEGIN { use_ok('Socket::More') };
   my $perl=Socket::pack_sockaddr_un("test");
   
   my $sm=pack_sockaddr_un("test");
-  say STDERR "length: ", length $perl;
-  say STDERR "perl: ", unpack "H*", $perl;
-  say STDERR "sm: ", unpack "H*", $sm;
   ok substr($perl, 1) eq substr($sm,1);
   
   my($pname)=Socket::unpack_sockaddr_un($perl);
   my($sname)=unpack_sockaddr_un($sm);
-  say STDERR "perl: ", $pname;
-  say STDERR "sm: ", $sname;
 
   ok $pname eq $sname, "pack_sockaddr_un port";
 }
@@ -142,15 +137,10 @@ BEGIN { use_ok('Socket::More') };
 		});
 
   for(0..$#results){
-    #say STDERR Dumper $results[$_], $results_family[$_] if cmp_data($results[$_], $results_family[$_])!=0;
     ok cmp_data($results[$_], $results_family[$_])==0, "Result match: implicit family";
     ok cmp_data($results[$_], $results_family_interface[$_])==0, "Result match: explicity family";
     ok cmp_data($results[$_], $results_family_string[$_])==0, "Result match: explicit family string";
   }
-  #ok ((cmp_data(\@results, \@results_family)==0),"Family ok");
-  #ok (cmp_data(\@results, \@results_family_interface)==1,"Family  and interface ok");
-  #ok (cmp_data(\@results, \@results_family_string)==1,"Family string ok");
-
 }
 
 {

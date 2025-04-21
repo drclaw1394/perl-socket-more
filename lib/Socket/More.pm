@@ -507,7 +507,6 @@ sub sockaddr_passive{
 			next;
 
 	CLONE:
-	    say "IN CLONE";	
 			my %clone=$_->%*;			
 			my $clone=\%clone;
 			$clone{data}=$spec->{data};
